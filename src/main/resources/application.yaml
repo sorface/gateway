@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: gateway
+
+  security:
+    oauth2:
+      client:
+        registration:
+          gateway:
+            provider: passport
+            client-id: "*****"
+            client-secret: "*****"
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/gateway"
+            scope:
+              - "openid"
+              - "profile"
+        provider:
+          passport:
+            issuer-uri: http://localhost:8080
+            token-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/token
+            authorization-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/authorize
+            user-info-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/userinfo
+            jwk-set-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/jwks
+            user-name-attribute: "sub"
+
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8080/oauth2/jwks
+
+  cloud:
+    gateway:
+      routes:
+        - id: interview-api
+          uri: http://localhost:5043
+          predicates:
+            - Path=/api/product/interview/**
+          filters:
+            - RewritePath=/api/product/interview/(?<segment>.*),/api/$\{segment}
+            - TokenRelay=
+        - id: interview-websocket
+          uri: http://localhost:5043
+          predicates:
+            - Path=/stream/product/interview/**
+          filters:
+            - RewritePath=/stream/product/interview/(?<segment>.*),/$\{segment}
+            - TokenRelay=
+        - id: java-server
+          uri: http://localhost:3042
+          predicates:
+            - Path=/java/api/**
+          filters:
+            - RewritePath=/java/api/(?<segment>.*),/$\{segment}
+            - TokenRelay=
+        - id: self-login
+          uri: http://localhost:${server.port}
+          predicates:
+            - Path=/signin
+          filters:
+            - RewritePath=/signin(?<segment>.*),/oauth2/authorization/gateway$\{segment}
+        - id: passport-account-api
+          uri: http://localhost:8080
+          predicates:
+            - Path=/api/passport/**
+          filters:
+            - TokenRelay=
+            - RewritePath=/api/passport/(?<segment>.*),/api/$\{segment}
+
+#OAuth2AuthorizationRequestRedirectWebFilter
+logging:
+  level:
+    root: trace
+server:
+  port: 9000
