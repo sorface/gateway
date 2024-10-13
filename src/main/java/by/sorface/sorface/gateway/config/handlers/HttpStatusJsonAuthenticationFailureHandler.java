@@ -8,11 +8,11 @@ import org.springframework.security.web.server.WebFilterExchange;
 import org.springframework.security.web.server.authentication.ServerAuthenticationFailureHandler;
 import reactor.core.publisher.Mono;
 
-public class HttpStatusJsonAuthenticationFailure implements ServerAuthenticationFailureHandler {
+public class HttpStatusJsonAuthenticationFailureHandler implements ServerAuthenticationFailureHandler {
 
     private final HttpStatus httpStatus;
 
-    public HttpStatusJsonAuthenticationFailure(HttpStatus httpStatus) {
+    public HttpStatusJsonAuthenticationFailureHandler(HttpStatus httpStatus) {
         this.httpStatus = httpStatus;
     }
 

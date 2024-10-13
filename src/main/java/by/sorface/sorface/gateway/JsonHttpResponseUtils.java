@@ -14,6 +14,10 @@ import java.util.Map;
 public final class JsonHttpResponseUtils {
 
     public static Mono<Void> toJsonException(final ServerHttpResponse response, final HttpStatus httpStatus, final Throwable throwable) {
+        return toJsonException(response, httpStatus, throwable.getMessage());
+    }
+
+    public static Mono<Void> toJsonException(final ServerHttpResponse response, final HttpStatus httpStatus, final String message) {
         final DataBufferFactory dataBufferFactory = response.bufferFactory();
 
         DataBuffer buffer;
@@ -21,7 +25,7 @@ public final class JsonHttpResponseUtils {
             buffer = dataBufferFactory.wrap(
                     new ObjectMapper().writeValueAsBytes(Map.of(
                             "code", httpStatus.value(),
-                            "message", throwable.getMessage()
+                            "message", message
                     ))
             );
         } catch (JsonProcessingException e) {
