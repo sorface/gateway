@@ -1,7 +1,7 @@
 package by.sorface.sorface.gateway.config;
 
 import by.sorface.sorface.gateway.config.handlers.*;
-import by.sorface.sorface.gateway.config.resolvers.StatePayloadServerOAuth2AuthorizationRequestResolver;
+import by.sorface.sorface.gateway.config.resolvers.RedirectServerOAuth2AuthorizationRequestResolver;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.context.annotation.Bean;
@@ -31,7 +31,7 @@ public class OAuth2LoginSecurityConfig {
                     exchanges.anyExchange().authenticated();
                 })
                 .oauth2Login(oAuth2LoginSpec -> {
-                    final var authorizationRequestResolver = new StatePayloadServerOAuth2AuthorizationRequestResolver(clientRegistrationRepository, "redirectUri", "~");
+                    final var authorizationRequestResolver = new RedirectServerOAuth2AuthorizationRequestResolver(clientRegistrationRepository, "redirectUri", "~");
                     oAuth2LoginSpec.authorizationRequestResolver(authorizationRequestResolver);
 
                     final var authenticationSuccessHandler = new StateRedirectUrlServerAuthenticationSuccessHandler();
@@ -58,7 +58,6 @@ public class OAuth2LoginSecurityConfig {
 
     @Bean
     @ConditionalOnMissingBean(value = ErrorWebExceptionHandler.class)
-    @Order(-1)
     public ErrorWebExceptionHandler customErrorWebExceptionHandler() {
         return new GlobalErrorWebExceptionHandler();
     }

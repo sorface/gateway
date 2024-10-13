@@ -1,5 +1,6 @@
 package by.sorface.sorface.gateway.utils;
 
+import by.sorface.sorface.gateway.records.ErrorOperation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -13,6 +14,8 @@ import java.util.Map;
 
 public final class JsonHttpResponseUtils {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     public static Mono<Void> toJsonException(final ServerHttpResponse response, final HttpStatus httpStatus, final Throwable throwable) {
         return toJsonException(response, httpStatus, throwable.getMessage());
     }
@@ -21,20 +24,14 @@ public final class JsonHttpResponseUtils {
         final DataBufferFactory dataBufferFactory = response.bufferFactory();
 
         DataBuffer buffer;
+
         try {
-            buffer = dataBufferFactory.wrap(
-                    new ObjectMapper().writeValueAsBytes(Map.of(
-                            "code", httpStatus.value(),
-                            "message", message
-                    ))
-            );
+            buffer = dataBufferFactory.wrap(OBJECT_MAPPER.writeValueAsBytes(new ErrorOperation(httpStatus.value(), message)));
         } catch (JsonProcessingException e) {
             return Mono.error(e);
         }
 
-        return response
-                .writeWith(Mono.just(buffer))
-                .doOnError((error) -> DataBufferUtils.release(buffer));
+        return response.writeWith(Mono.just(buffer)).doOnError((error) -> DataBufferUtils.release(buffer));
     }
 
 }

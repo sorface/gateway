@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-public class StatePayloadServerOAuth2AuthorizationRequestResolver implements ServerOAuth2AuthorizationRequestResolver {
+public class RedirectServerOAuth2AuthorizationRequestResolver implements ServerOAuth2AuthorizationRequestResolver {
 
     public static final String DEFAULT_REGISTRATION_ID_URI_VARIABLE_NAME = "registrationId";
 
@@ -63,13 +63,13 @@ public class StatePayloadServerOAuth2AuthorizationRequestResolver implements Ser
     private Consumer<OAuth2AuthorizationRequest.Builder> authorizationRequestCustomizer = (customizer) -> {
     };
 
-    public StatePayloadServerOAuth2AuthorizationRequestResolver(final ReactiveClientRegistrationRepository clientRegistrationRepository,
-                                                                final String stateParameter,
-                                                                final String parameterSpliterator) {
+    public RedirectServerOAuth2AuthorizationRequestResolver(final ReactiveClientRegistrationRepository clientRegistrationRepository,
+                                                            final String stateParameter,
+                                                            final String parameterSpliterator) {
         this(clientRegistrationRepository, new PathPatternParserServerWebExchangeMatcher(DEFAULT_AUTHORIZATION_REQUEST_PATTERN), stateParameter, parameterSpliterator);
     }
 
-    public StatePayloadServerOAuth2AuthorizationRequestResolver(
+    public RedirectServerOAuth2AuthorizationRequestResolver(
             final ReactiveClientRegistrationRepository clientRegistrationRepository,
             final ServerWebExchangeMatcher authorizationRequestMatcher,
             final String stateParameter,
