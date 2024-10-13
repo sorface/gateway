@@ -1,6 +1,6 @@
 package by.sorface.sorface.gateway.config.handlers;
 
-import by.sorface.sorface.gateway.JsonHttpResponseUtils;
+import by.sorface.sorface.gateway.utils.JsonHttpResponseUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;

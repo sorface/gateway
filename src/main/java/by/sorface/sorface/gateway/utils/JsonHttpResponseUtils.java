@@ -1,4 +1,4 @@
-package by.sorface.sorface.gateway;
+package by.sorface.sorface.gateway.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -8,7 +8,7 @@ import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import static by.sorface.sorface.gateway.JsonHttpResponseUtils.toJsonException;
+import static by.sorface.sorface.gateway.utils.JsonHttpResponseUtils.toJsonException;
 
 public class GlobalErrorWebExceptionHandler implements ErrorWebExceptionHandler {
 
