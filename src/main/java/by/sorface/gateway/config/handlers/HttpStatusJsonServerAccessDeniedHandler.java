@@ -1,6 +1,6 @@
-package by.sorface.sorface.gateway.config.handlers;
+package by.sorface.gateway.config.handlers;
 
-import by.sorface.sorface.gateway.utils.JsonHttpResponseUtils;
+import by.sorface.gateway.utils.JsonHttpResponseUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
@@ -24,7 +24,7 @@ public class HttpStatusJsonServerAccessDeniedHandler implements ServerAccessDeni
             response.setStatusCode(this.httpStatus);
             response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-            return JsonHttpResponseUtils.toJsonException(response, httpStatus, denied);
+            return JsonHttpResponseUtils.buildJsonResponseWithException(response, httpStatus, denied);
         });
     }
 

@@ -1,4 +1,4 @@
-package by.sorface.sorface.gateway.config.resolvers;
+package by.sorface.gateway.config.resolvers;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;

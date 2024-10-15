@@ -1,6 +1,6 @@
-package by.sorface.sorface.gateway.config.handlers;
+package by.sorface.gateway.config.handlers;
 
-import by.sorface.sorface.gateway.utils.JsonHttpResponseUtils;
+import by.sorface.gateway.utils.JsonHttpResponseUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
@@ -22,7 +22,7 @@ public class HttpStatusJsonAuthenticationFailureHandler implements ServerAuthent
             response.setStatusCode(this.httpStatus);
             response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-            return JsonHttpResponseUtils.toJsonException(response, httpStatus, exception);
+            return JsonHttpResponseUtils.buildJsonResponseWithException(response, httpStatus, exception);
         });
     }
 

@@ -1,4 +1,4 @@
-package by.sorface.sorface.gateway.config.handlers;
+package by.sorface.gateway.config.handlers;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -8,7 +8,7 @@ import org.springframework.util.Assert;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import static by.sorface.sorface.gateway.utils.JsonHttpResponseUtils.toJsonException;
+import static by.sorface.gateway.utils.JsonHttpResponseUtils.buildJsonResponseWithException;
 
 public class HttpStatusJsonServerAuthenticationEntryPoint implements ServerAuthenticationEntryPoint {
 
@@ -25,7 +25,7 @@ public class HttpStatusJsonServerAuthenticationEntryPoint implements ServerAuthe
             response.setStatusCode(httpStatus);
             response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-            return toJsonException(response, httpStatus, ex);
+            return buildJsonResponseWithException(response, httpStatus, ex);
         });
     }
 

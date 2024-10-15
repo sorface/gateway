@@ -6,12 +6,12 @@ spring:
     oauth2:
       client:
         registration:
-          gateway:
+          passport:
             provider: passport
-            client-id: "****************"
-            client-secret: "*******************"
+            client-id: "*****************"
+            client-secret: "*****************"
             authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/login/oauth2/code/gateway"
+            redirect-uri: "{baseUrl}/login/oauth2/code/passport"
             scope:
               - "openid"
               - "profile"
@@ -57,7 +57,7 @@ spring:
           predicates:
             - Path=/signin
           filters:
-            - RewritePath=/signin(?<segment>.*),/oauth2/authorization/gateway$\{segment}
+            - RewritePath=/signin(?<segment>.*),/oauth2/authorization/passport$\{segment}
         - id: passport-account-api
           uri: http://localhost:8080
           predicates:
