@@ -2,19 +2,22 @@ spring:
   application:
     name: gateway
 
+  config:
+    import: classpath:sorface.cors.yml
+
   security:
     oauth2:
       client:
         registration:
           passport:
             provider: passport
-            client-id: "*****************"
-            client-secret: "*****************"
+            client-id: QFXYNOMYEJTwGkpbCCTIRrAkMHxKfNcHtUbhGuqBHCaSAVprAtpqmLY@sorface.oauth.client
+            client-secret: PotnMEYSZMlLiYbmuqmmQtFAAjGCQUjXTDVGoEEwYFckvmPomVLdUjE
             authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/login/oauth2/code/passport"
+            redirect-uri: "http://localhost:9000/login/oauth2/code/passport"
             scope:
-              - "openid"
-              - "profile"
+              - openid
+              - profile
         provider:
           passport:
             issuer-uri: http://localhost:8080
@@ -52,12 +55,6 @@ spring:
           filters:
             - RewritePath=/java/api/(?<segment>.*),/$\{segment}
             - TokenRelay=
-        - id: self-login
-          uri: http://localhost:${server.port}
-          predicates:
-            - Path=/signin
-          filters:
-            - RewritePath=/signin(?<segment>.*),/oauth2/authorization/passport$\{segment}
         - id: passport-account-api
           uri: http://localhost:8080
           predicates:
@@ -65,9 +62,17 @@ spring:
           filters:
             - TokenRelay=
             - RewritePath=/api/passport/(?<segment>.*),/api/$\{segment}
+        - id: gateway-account-api
+          uri: http://localhost:9000
+          predicates:
+            - Path=/api/gateway/**
+          filters:
+            - TokenRelay=
+            - RewritePath=/api/gateway/(?<segment>.*),/$\{segment}
 
 logging:
   level:
-    root: trace
+    root: info
+
 server:
   port: 9000

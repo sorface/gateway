@@ -1,43 +1,37 @@
-package by.sorface.gateway.utils;
+package by.sorface.gateway.utils
 
-import by.sorface.gateway.records.ErrorOperation;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.server.reactive.ServerHttpResponse;
-import reactor.core.publisher.Mono;
+import by.sorface.gateway.records.ErrorOperation
+import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.http.HttpStatus
+import org.springframework.http.server.reactive.ServerHttpResponse
+import reactor.core.publisher.Mono
 
-public final class JsonHttpResponseUtils {
+object JsonHttpResponseUtils {
+    private val OBJECT_MAPPER = ObjectMapper()
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-    public static Mono<Void> buildJsonResponseWithException(final ServerHttpResponse response, final HttpStatus httpStatus, final Throwable throwable) {
-        return buildJsonResponseWithException(response, httpStatus, throwable.getMessage());
+    fun buildJsonResponseWithException(response: ServerHttpResponse, httpStatus: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR, throwable: Throwable): Mono<Void> {
+        return buildJsonResponseWithException(response, httpStatus, throwable.message)
     }
 
-    public static Mono<Void> buildJsonResponseWithException(final ServerHttpResponse response, final HttpStatus httpStatus, final String message) {
-        final DataBufferFactory dataBufferFactory = response.bufferFactory();
+    fun buildJsonResponseWithException(response: ServerHttpResponse, httpStatus: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR, message: String? = null): Mono<Void> {
+        val dataBufferFactory = response.bufferFactory()
 
-        response.setStatusCode(httpStatus);
+        response.setStatusCode(httpStatus)
 
-        Mono<DataBuffer> dataBufferMono = Mono.defer(() -> {
-                    Mono<byte[]> result;
+        val dataBufferMono = Mono.defer {
+                var result: Mono<ByteArray>?
+                try {
+                    val data = OBJECT_MAPPER.writeValueAsBytes(ErrorOperation(httpStatus.value(), message!!))
 
-                    try {
-                        byte[] data = OBJECT_MAPPER.writeValueAsBytes(new ErrorOperation(httpStatus.value(), message));
+                    result = Mono.just(data)
+                } catch (e: JsonProcessingException) {
+                    result = Mono.error(e)
+                }
+                result
+            }
+            .map { bytes: ByteArray? -> dataBufferFactory.wrap(bytes) }
 
-                        result = Mono.just(data);
-                    } catch (JsonProcessingException e) {
-                        result = Mono.error(e);
-                    }
-
-                    return result;
-                })
-                .map(dataBufferFactory::wrap);
-
-        return response.writeWith(dataBufferMono);
+        return response.writeWith(dataBufferMono)
     }
-
 }

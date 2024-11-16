@@ -1,4 +1,3 @@
-package by.sorface.gateway.records;
+package by.sorface.gateway.records
 
-public record ErrorOperation(int code, String description) {
-}
+data class ErrorOperation(val code: Int, val description: String)
