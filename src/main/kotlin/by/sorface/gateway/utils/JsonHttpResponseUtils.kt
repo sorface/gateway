@@ -20,7 +20,8 @@ object JsonHttpResponseUtils {
         response.setStatusCode(httpStatus)
 
         val dataBufferMono = Mono.defer {
-                var result: Mono<ByteArray>?
+                var result: Mono<ByteArray>
+
                 try {
                     val data = OBJECT_MAPPER.writeValueAsBytes(ErrorOperation(httpStatus.value(), message!!))
 
@@ -28,9 +29,10 @@ object JsonHttpResponseUtils {
                 } catch (e: JsonProcessingException) {
                     result = Mono.error(e)
                 }
+
                 result
             }
-            .map { bytes: ByteArray? -> dataBufferFactory.wrap(bytes) }
+            .map { bytes: ByteArray -> dataBufferFactory.wrap(bytes) }
 
         return response.writeWith(dataBufferMono)
     }

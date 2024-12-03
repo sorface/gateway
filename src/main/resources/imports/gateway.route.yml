@@ -1,0 +1,39 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: interview-api
+          uri: http://localhost:5043
+          predicates:
+            - Path=/api/product/interview/**
+          filters:
+            - RewritePath=/api/product/interview/(?<segment>.*),/api/$\{segment}
+            - TokenRelay=
+        - id: interview-websocket
+          uri: http://localhost:5043
+          predicates:
+            - Path=/stream/product/interview/**
+          filters:
+            - RewritePath=/stream/product/interview/(?<segment>.*),/$\{segment}
+            - TokenRelay=
+        - id: java-server
+          uri: http://localhost:3042
+          predicates:
+            - Path=/java/api/**
+          filters:
+            - RewritePath=/java/api/(?<segment>.*),/$\{segment}
+            - TokenRelay=
+        - id: passport-account-api
+          uri: http://localhost:8080
+          predicates:
+            - Path=/passport/**
+          filters:
+            - TokenRelay=
+            - RewritePath=/passport/(?<segment>.*),/$\{segment}
+        - id: gateway-account-api
+          uri: http://localhost:9000
+          predicates:
+            - Path=/api/gateway/**
+          filters:
+            - TokenRelay=
+            - RewritePath=/api/gateway/(?<segment>.*),/$\{segment}

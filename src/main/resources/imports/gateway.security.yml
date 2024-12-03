@@ -1,0 +1,26 @@
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          passport:
+            provider: passport
+            client-id: QFXYNOMYEJTwGkpbCCTIRrAkMHxKfNcHtUbhGuqBHCaSAVprAtpqmLY@sorface.oauth.client
+            client-secret: PotnMEYSZMlLiYbmuqmmQtFAAjGCQUjXTDVGoEEwYFckvmPomVLdUjE
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://localhost:9000/login/oauth2/code/passport"
+            scope:
+              - openid
+              - profile
+        provider:
+          passport:
+            issuer-uri: http://localhost:8080
+            token-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/token
+            authorization-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/authorize
+            user-info-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/userinfo
+            jwk-set-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/jwks
+            user-name-attribute: "sub"
+
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8080/oauth2/jwks

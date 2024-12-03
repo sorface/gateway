@@ -1,0 +1,20 @@
+spring.session:
+  timeout: 5d
+  redis:
+      repository-type: indexed
+      namespace: gateway:sessions
+      save-mode: on_set_attribute
+      configure-action: notify_keyspace_events
+      flush-mode: on_save
+      cleanup-cron: 0 * * * * *
+
+gateway.session.cookie:
+  domain: 'localhost'
+  name: 'gtw_id'
+  http-only: true
+  path: '/'
+  secure: true
+  same-site: lax
+
+server.reactive.session:
+  timeout: 5d

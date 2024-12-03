@@ -1,0 +1,9 @@
+gateway.frontend:
+  security:
+    permit-all-patterns:
+      - '/actuator/**'
+  sign-in:
+    redirect-query-param: 'redirect-location'
+
+  sign-out:
+    redirect-query-param: 'redirect-location'

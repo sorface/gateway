@@ -9,7 +9,16 @@ import org.springframework.security.web.server.WebFilterExchange
 import org.springframework.security.web.server.authentication.ServerAuthenticationFailureHandler
 import reactor.core.publisher.Mono
 
+/**
+ * Обработчик исключение при неавторизованном доступе к ресурсам
+ */
 class HttpStatusJsonAuthenticationFailureHandler(private val httpStatus: HttpStatus) : ServerAuthenticationFailureHandler {
+
+    /**
+     * Обработка запроса, при выполнении которого было выброшено исключение об отсутствии аутентификации
+     *
+     * @param webFilterExchange фильтр, на котором было выброшено исключение
+     */
     override fun onAuthenticationFailure(webFilterExchange: WebFilterExchange, exception: AuthenticationException): Mono<Void> {
         return Mono.defer { Mono.just(webFilterExchange.exchange.response) }
             .flatMap { response: ServerHttpResponse ->
@@ -18,4 +27,5 @@ class HttpStatusJsonAuthenticationFailureHandler(private val httpStatus: HttpSta
                 JsonHttpResponseUtils.buildJsonResponseWithException(response, httpStatus, exception)
             }
     }
+
 }

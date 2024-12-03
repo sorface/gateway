@@ -10,21 +10,16 @@ import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
 
 /**
- * This is a custom ErrorWebExceptionHandler that handles exceptions that occur during the execution of the application.
- *
- * @author Sorface
+ * Глобальный обработчик исключений
  */
 class GlobalErrorWebExceptionHandler : ErrorWebExceptionHandler {
+
     /**
-     * This method handles exceptions by converting them to JSON responses.
-     * If the exception is an instance of ClientAuthorizationException, it checks the error code and responds with an appropriate HTTP status code.
-     * If the error code is INVALID_GRANT, it responds with a 401 UNAUTHORIZED status code and a message indicating that the session expired.
-     * For all other errors, it responds with a 500 INTERNAL_SERVER_ERROR status code.
+     * Обработка глобального исключения
      *
-     * @param exchange  the ServerWebExchange object
-     * @param throwable the Throwable object
-     * @return the Mono<Void> object
-    </Void> */
+     * @param exchange запрос, при котором было выброшено исключение
+     * @param throwable выброшенное исключение
+     */
     override fun handle(exchange: ServerWebExchange, throwable: Throwable): Mono<Void> {
         return Mono.defer {
             val response = exchange.response
@@ -42,4 +37,5 @@ class GlobalErrorWebExceptionHandler : ErrorWebExceptionHandler {
             JsonHttpResponseUtils.buildJsonResponseWithException(response, throwable = throwable)
         }
     }
+
 }

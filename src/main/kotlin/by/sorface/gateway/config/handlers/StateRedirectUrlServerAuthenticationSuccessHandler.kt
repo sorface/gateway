@@ -11,19 +11,33 @@ import reactor.core.publisher.Mono
 import java.net.URI
 import java.net.URISyntaxException
 
+/**
+ * Обработчик успешного входа в систему
+ */
 class StateRedirectUrlServerAuthenticationSuccessHandler : RedirectServerAuthenticationSuccessHandler() {
+
+    companion object {
+        private val DEFAULT_SERVER_REDIRECT_STRATEGY = DefaultServerRedirectStrategy()
+    }
 
     init {
         DEFAULT_SERVER_REDIRECT_STRATEGY.setContextRelative(false)
     }
 
+    /**
+     * Обработчик успешной авторизации
+     */
     override fun onAuthenticationSuccess(webFilterExchange: WebFilterExchange, authentication: Authentication): Mono<Void> {
-        return super.onAuthenticationSuccess(webFilterExchange, authentication).then(Mono.empty())
-//        return getRedirectUrl(webFilterExchange.exchange)
-//            .switchIfEmpty(Mono.defer { super.onAuthenticationSuccess(webFilterExchange, authentication).then(Mono.empty()) })
-//            .flatMap { redirectUrl: URI? -> DEFAULT_SERVER_REDIRECT_STRATEGY.sendRedirect(webFilterExchange.exchange, redirectUrl) }
+        return getRedirectUrl(webFilterExchange.exchange)
+            .switchIfEmpty(Mono.defer { super.onAuthenticationSuccess(webFilterExchange, authentication).then(Mono.empty()) })
+            .flatMap { redirectUrl: URI? -> DEFAULT_SERVER_REDIRECT_STRATEGY.sendRedirect(webFilterExchange.exchange, redirectUrl) }
     }
 
+    /**
+     * Получение из сессии URL для перенаправления
+     *
+     * @param exchange исходный запрос
+     */
     private fun getRedirectUrl(exchange: ServerWebExchange): Mono<URI> {
         return exchange.session
             .filter { webSession: WebSession -> webSession.attributes.containsKey(WebSessionAttributes.ORIGINAL_REQUEST_ATTRIBUTE) }
@@ -41,7 +55,4 @@ class StateRedirectUrlServerAuthenticationSuccessHandler : RedirectServerAuthent
             .onErrorResume { Mono.empty() }
     }
 
-    companion object {
-        private val DEFAULT_SERVER_REDIRECT_STRATEGY = DefaultServerRedirectStrategy()
-    }
 }

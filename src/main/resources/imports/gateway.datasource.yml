@@ -1,0 +1,8 @@
+spring.data.redis:
+  host: localhost
+  password: testpassword
+  username: default
+  port: 6379
+
+  lettuce.pool:
+    enabled: true

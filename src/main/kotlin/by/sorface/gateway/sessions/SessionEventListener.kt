@@ -12,31 +12,26 @@ import reactor.core.publisher.Mono
 @Component
 class SessionEventListener {
 
-    private companion object {
-        val logger: Logger = LoggerFactory.getLogger(SessionEventListener::class.java)
-    }
+    private val logger: Logger = LoggerFactory.getLogger(SessionEventListener::class.java)
 
     @EventListener
     fun processSessionCreatedEvent(event: SessionCreatedEvent): Mono<Void> {
-        return Mono.defer {
-            logger.info("Session created: {}", event.sessionId)
-            Mono.empty()
-        }
+        logger.info("Session created: {}", event.sessionId)
+
+        return Mono.empty()
     }
 
     @EventListener
     fun processSessionDeletedEvent(event: SessionDeletedEvent): Mono<Void> {
-        return Mono.defer {
-            logger.info("Session deleted: {}", event.sessionId)
-            Mono.empty()
-        }
+        logger.info("Session deleted: {}", event.sessionId)
+
+        return Mono.empty()
     }
 
     @EventListener
     fun processSessionExpiredEvent(event: SessionExpiredEvent): Mono<Void> {
-        return Mono.defer {
-            logger.info("Session expired: {}", event.sessionId)
-            Mono.empty()
-        }
+        logger.info("Session expired: {}", event.sessionId)
+
+        return Mono.empty()
     }
 }

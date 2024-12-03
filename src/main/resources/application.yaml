@@ -1,78 +1,19 @@
+server:
+  port: 9000
+
 spring:
   application:
     name: gateway
 
   config:
-    import: classpath:sorface.cors.yml
-
-  security:
-    oauth2:
-      client:
-        registration:
-          passport:
-            provider: passport
-            client-id: QFXYNOMYEJTwGkpbCCTIRrAkMHxKfNcHtUbhGuqBHCaSAVprAtpqmLY@sorface.oauth.client
-            client-secret: PotnMEYSZMlLiYbmuqmmQtFAAjGCQUjXTDVGoEEwYFckvmPomVLdUjE
-            authorization-grant-type: authorization_code
-            redirect-uri: "http://localhost:9000/login/oauth2/code/passport"
-            scope:
-              - openid
-              - profile
-        provider:
-          passport:
-            issuer-uri: http://localhost:8080
-            token-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/token
-            authorization-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/authorize
-            user-info-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/userinfo
-            jwk-set-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/jwks
-            user-name-attribute: "sub"
-
-      resourceserver:
-        jwt:
-          jwk-set-uri: http://localhost:8080/oauth2/jwks
-
-  cloud:
-    gateway:
-      routes:
-        - id: interview-api
-          uri: http://localhost:5043
-          predicates:
-            - Path=/api/product/interview/**
-          filters:
-            - RewritePath=/api/product/interview/(?<segment>.*),/api/$\{segment}
-            - TokenRelay=
-        - id: interview-websocket
-          uri: http://localhost:5043
-          predicates:
-            - Path=/stream/product/interview/**
-          filters:
-            - RewritePath=/stream/product/interview/(?<segment>.*),/$\{segment}
-            - TokenRelay=
-        - id: java-server
-          uri: http://localhost:3042
-          predicates:
-            - Path=/java/api/**
-          filters:
-            - RewritePath=/java/api/(?<segment>.*),/$\{segment}
-            - TokenRelay=
-        - id: passport-account-api
-          uri: http://localhost:8080
-          predicates:
-            - Path=/api/passport/**
-          filters:
-            - TokenRelay=
-            - RewritePath=/api/passport/(?<segment>.*),/api/$\{segment}
-        - id: gateway-account-api
-          uri: http://localhost:9000
-          predicates:
-            - Path=/api/gateway/**
-          filters:
-            - TokenRelay=
-            - RewritePath=/api/gateway/(?<segment>.*),/$\{segment}
+    import:
+      - classpath:imports/gateway.cors.yml
+      - classpath:imports/gateway.session.yml
+      - classpath:imports/gateway.datasource.yml
+      - classpath:imports/gateway.route.yml
+      - classpath:imports/gateway.security.yml
+      - classpath:imports/gateway.frontend.yml
 
 logging:
   level:
-    root: info
-
-server:
-  port: 9000
+    root: trace
