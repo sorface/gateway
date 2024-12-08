@@ -1,3 +1,21 @@
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+
+gateway.frontend:
+  sign-in:
+    redirect-query-param: 'redirect-location'
+  sign-out:
+    redirect-query-param: 'redirect-location'
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+
 gateway.frontend:
   security:
     permit-all-patterns:

@@ -15,6 +15,7 @@ import reactor.core.publisher.Mono
 @RestController
 @RequestMapping("/api/gateway/sessions")
 class SessionController(private val redisIndexNameSessionRepository: ReactiveFindByIndexNameSessionRepository<out Session>) {
+
     private val logger = LoggerFactory.getLogger(SessionController::class.java)
 
     @GetMapping

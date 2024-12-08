@@ -10,7 +10,7 @@ spring.session:
 
 gateway.session.cookie:
   domain: 'localhost'
-  name: 'gtw_id'
+  name: 'gtw_sid'
   http-only: true
   path: '/'
   secure: true

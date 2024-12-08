@@ -2,38 +2,32 @@ spring:
   cloud:
     gateway:
       routes:
+        # interview backend
+
         - id: interview-api
-          uri: http://localhost:5043
+          uri: ${INTERVIEW_SERVICE_URL}
           predicates:
-            - Path=/api/product/interview/**
+            - Path=/interview/**
           filters:
-            - RewritePath=/api/product/interview/(?<segment>.*),/api/$\{segment}
+            - RewritePath=/interview/(?<segment>.*),/api/$\{segment}
             - TokenRelay=
-        - id: interview-websocket
-          uri: http://localhost:5043
-          predicates:
-            - Path=/stream/product/interview/**
-          filters:
-            - RewritePath=/stream/product/interview/(?<segment>.*),/$\{segment}
-            - TokenRelay=
-        - id: java-server
-          uri: http://localhost:3042
-          predicates:
-            - Path=/java/api/**
-          filters:
-            - RewritePath=/java/api/(?<segment>.*),/$\{segment}
-            - TokenRelay=
+
+        # passport backend
+
         - id: passport-account-api
-          uri: http://localhost:8080
+          uri: ${PASSPORT_SERVICE_URL}
           predicates:
             - Path=/passport/**
           filters:
             - TokenRelay=
             - RewritePath=/passport/(?<segment>.*),/$\{segment}
-        - id: gateway-account-api
-          uri: http://localhost:9000
+
+        # sockets
+
+        - id: socket-interview-room
+          uri: ${INTERVIEW_SERVICE_URL}
           predicates:
-            - Path=/api/gateway/**
+            - Path=/socket/interview/room/**
           filters:
+            - RewritePath=/socket/interview/room/(?<segment>.*),/$\{segment}
             - TokenRelay=
-            - RewritePath=/api/gateway/(?<segment>.*),/$\{segment}

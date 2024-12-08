@@ -3,16 +3,15 @@ package by.sorface.gateway.config
 import by.sorface.gateway.config.entrypoints.HttpStatusJsonServerAuthenticationEntryPoint
 import by.sorface.gateway.config.handlers.*
 import by.sorface.gateway.config.resolvers.SpaServerOAuth2AuthorizationRequestResolver
-import by.sorface.gateway.properties.GatewaySessionCookieProperties
-import by.sorface.gateway.properties.SecurityWhiteList
-import by.sorface.gateway.properties.SignInProperties
-import by.sorface.gateway.properties.SignOutProperties
+import by.sorface.gateway.properties.*
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.web.ServerProperties
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
+import org.springframework.data.redis.core.RedisKeyValueAdapter
+import org.springframework.data.redis.repository.configuration.EnableRedisRepositories
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
 import org.springframework.security.config.Customizer
@@ -24,7 +23,6 @@ import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcCli
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers
 import org.springframework.security.oauth2.client.web.server.DefaultServerOAuth2AuthorizationRequestResolver
-import org.springframework.security.web.authentication.logout.CookieClearingLogoutHandler
 import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.security.web.server.WebFilterExchange
 import org.springframework.security.web.server.authentication.logout.DelegatingServerLogoutHandler
@@ -41,10 +39,12 @@ import java.net.URI
 @Configuration
 @EnableWebFluxSecurity
 @EnableRedisIndexedWebSession(redisNamespace = "gateway:sessions", maxInactiveIntervalInSeconds = 432000)
+@EnableRedisRepositories(enableKeyspaceEvents = RedisKeyValueAdapter.EnableKeyspaceEvents.ON_STARTUP)
 @EnableReactiveMethodSecurity
 class SecurityConfig(
     private val signInProperties: SignInProperties,
     private val signOutProperties: SignOutProperties,
+    private val externalPassportCookieProperties: ExternalPassportCookieProperties,
     private val securityWhiteList: SecurityWhiteList
 ) {
 
@@ -71,7 +71,8 @@ class SecurityConfig(
                 val accessDeniedHandler = HttpStatusJsonServerAccessDeniedHandler(HttpStatus.FORBIDDEN)
                 exceptionHandlingSpec.accessDeniedHandler(accessDeniedHandler)
 
-                val httpStatusJsonServerAuthenticationEntryPoint = HttpStatusJsonServerAuthenticationEntryPoint(HttpStatus.UNAUTHORIZED)
+                val httpStatusJsonServerAuthenticationEntryPoint =
+                    HttpStatusJsonServerAuthenticationEntryPoint(HttpStatus.UNAUTHORIZED, externalPassportCookieProperties.name)
                 exceptionHandlingSpec.authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint)
             }
             .logout { logoutSpec: ServerHttpSecurity.LogoutSpec ->

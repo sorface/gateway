@@ -1,8 +1,8 @@
 spring.data.redis:
-  host: localhost
-  password: testpassword
-  username: default
-  port: 6379
+  host: ${REDIS_HOST}
+  username: ${REDIS_USERNAME}
+  password: ${REDIS_PASSWORD}
+  port: ${REDIS_PORT}
 
   lettuce.pool:
     enabled: true

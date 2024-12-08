@@ -5,22 +5,27 @@ spring:
         registration:
           passport:
             provider: passport
-            client-id: QFXYNOMYEJTwGkpbCCTIRrAkMHxKfNcHtUbhGuqBHCaSAVprAtpqmLY@sorface.oauth.client
-            client-secret: PotnMEYSZMlLiYbmuqmmQtFAAjGCQUjXTDVGoEEwYFckvmPomVLdUjE
+            client-id: ${PASSPORT_CLIENT_ID}
+            client-secret: ${PASSPORT_CLIENT_SECRET}
             authorization-grant-type: authorization_code
-            redirect-uri: "http://localhost:9000/login/oauth2/code/passport"
+            redirect-uri: "${GATEWAY_SERVICE_URL}/login/oauth2/code/passport"
             scope:
               - openid
               - profile
         provider:
           passport:
-            issuer-uri: http://localhost:8080
-            token-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/token
-            authorization-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/authorize
-            user-info-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/userinfo
-            jwk-set-uri: ${spring.security.oauth2.client.provider.passport.issuer-uri}/oauth2/jwks
+            issuer-uri: ${PASSPORT_SERVICE_URL}
+            token-uri: ${INTERNAL_PASSPORT_SERVICE_URL}/oauth2/token
+            authorization-uri: ${PASSPORT_SERVICE_URL}/oauth2/authorize
+            user-info-uri: ${INTERNAL_PASSPORT_SERVICE_URL}/userinfo
+            jwk-set-uri: ${INTERNAL_PASSPORT_SERVICE_URL}/oauth2/jwks
             user-name-attribute: "sub"
 
       resourceserver:
         jwt:
-          jwk-set-uri: http://localhost:8080/oauth2/jwks
+          jwk-set-uri: ${INTERNAL_PASSPORT_SERVICE_URL}/oauth2/jwks
+
+gateway.external:
+  passport:
+    cookie:
+      name: ${EXTERNAL_PASSPORT_COOKIE_NAME}

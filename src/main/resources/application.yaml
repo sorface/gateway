@@ -16,4 +16,17 @@ spring:
 
 logging:
   level:
+    root: info
+
+---
+
+# docker profile configuration
+
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+logging:
+  level:
     root: trace
