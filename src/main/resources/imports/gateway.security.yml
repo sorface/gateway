@@ -15,17 +15,12 @@ spring:
         provider:
           passport:
             issuer-uri: ${PASSPORT_SERVICE_URL}
-            token-uri: ${INTERNAL_PASSPORT_SERVICE_URL}/oauth2/token
+            token-uri: ${PASSPORT_SERVICE_URL}/oauth2/token
             authorization-uri: ${PASSPORT_SERVICE_URL}/oauth2/authorize
-            user-info-uri: ${INTERNAL_PASSPORT_SERVICE_URL}/userinfo
-            jwk-set-uri: ${INTERNAL_PASSPORT_SERVICE_URL}/oauth2/jwks
+            user-info-uri: ${PASSPORT_SERVICE_URL}/userinfo
+            jwk-set-uri: ${PASSPORT_SERVICE_URL}/oauth2/jwks
             user-name-attribute: "sub"
 
       resourceserver:
         jwt:
-          jwk-set-uri: ${INTERNAL_PASSPORT_SERVICE_URL}/oauth2/jwks
-
-gateway.external:
-  passport:
-    cookie:
-      name: ${EXTERNAL_PASSPORT_COOKIE_NAME}
+          jwk-set-uri: ${PASSPORT_SERVICE_URL}/oauth2/jwks

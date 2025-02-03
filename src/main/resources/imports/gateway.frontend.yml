@@ -9,6 +9,10 @@ gateway.frontend:
     redirect-query-param: 'redirect-location'
   sign-out:
     redirect-query-param: 'redirect-location'
+  security:
+    permit-all-patterns:
+      - '/passport/api/csrf'
+      - '/passport/api/accounts/authenticated'
 
 ---
 spring:
@@ -20,6 +24,8 @@ gateway.frontend:
   security:
     permit-all-patterns:
       - '/actuator/**'
+      - '/passport/api/csrf'
+      - '/passport/api/accounts/authenticated'
   sign-in:
     redirect-query-param: 'redirect-location'
 

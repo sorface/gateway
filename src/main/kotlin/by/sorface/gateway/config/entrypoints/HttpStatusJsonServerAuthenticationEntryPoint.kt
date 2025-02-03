@@ -10,8 +10,7 @@ import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
 
 class HttpStatusJsonServerAuthenticationEntryPoint(
-    private val httpStatus: HttpStatus,
-    private val passportCookieName: String?
+    private val httpStatus: HttpStatus
 ) : ServerAuthenticationEntryPoint {
 
     init {
@@ -23,7 +22,7 @@ class HttpStatusJsonServerAuthenticationEntryPoint(
             .flatMap { response ->
                 response.setStatusCode(httpStatus)
                 response.headers.contentType = MediaType.APPLICATION_JSON
-                return@flatMap JsonHttpResponseUtils.buildJsonAuthorizationError(response, httpStatus, ex, exchange.request.cookies.containsKey(passportCookieName))
+                return@flatMap JsonHttpResponseUtils.buildJsonAuthorizationError(response, httpStatus, ex)
             }
     }
 }

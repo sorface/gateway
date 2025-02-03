@@ -26,7 +26,24 @@ spring:
   config:
     activate:
       on-profile: docker
+  cloud:
+    gateway:
+      httpclient:
+        wiretap: true
+      httpserver:
+        wiretap: true
 
 logging:
   level:
-    root: trace
+    root: ERROR
+    reactor:
+      netty: ERROR
+    org:
+      springframework:
+        web:
+          reactive: TRACE
+          filter: DEBUG
+          cors: TRACE
+        security: TRACE
+        cloud:
+          gateway: TRACE

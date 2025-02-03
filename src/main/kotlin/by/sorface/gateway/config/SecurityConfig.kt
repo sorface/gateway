@@ -7,11 +7,13 @@ import by.sorface.gateway.properties.*
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.web.ServerProperties
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler
+import org.springframework.cloud.gateway.config.GlobalCorsProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import org.springframework.data.redis.core.RedisKeyValueAdapter
 import org.springframework.data.redis.repository.configuration.EnableRedisRepositories
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
 import org.springframework.security.config.Customizer
@@ -32,10 +34,15 @@ import org.springframework.security.web.server.authentication.logout.WebSessionS
 import org.springframework.session.ReactiveSessionRepository
 import org.springframework.session.Session
 import org.springframework.session.data.redis.config.annotation.web.server.EnableRedisIndexedWebSession
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.reactive.CorsConfigurationSource
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource
+import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.server.session.CookieWebSessionIdResolver
 import org.springframework.web.server.session.WebSessionIdResolver
 import java.net.URI
 
+@EnableWebFlux
 @Configuration
 @EnableWebFluxSecurity
 @EnableRedisIndexedWebSession(redisNamespace = "gateway:sessions", maxInactiveIntervalInSeconds = 432000)
@@ -44,20 +51,24 @@ import java.net.URI
 class SecurityConfig(
     private val signInProperties: SignInProperties,
     private val signOutProperties: SignOutProperties,
-    private val externalPassportCookieProperties: ExternalPassportCookieProperties,
     private val securityWhiteList: SecurityWhiteList
 ) {
 
     @Bean
-    fun securityFilterChain(http: ServerHttpSecurity, clientRegistrationRepository: ReactiveClientRegistrationRepository): SecurityWebFilterChain {
+    fun securityFilterChain(http: ServerHttpSecurity, clientRegistrationRepository: ReactiveClientRegistrationRepository,
+                            globalCorsProperties: GlobalCorsProperties): SecurityWebFilterChain {
         http
+            .cors(Customizer.withDefaults())
             .authorizeExchange { exchanges: ServerHttpSecurity.AuthorizeExchangeSpec ->
                 exchanges.pathMatchers(*securityWhiteList.permitAllPatterns.toTypedArray()).permitAll()
+                exchanges.pathMatchers(HttpMethod.OPTIONS).permitAll()
                 exchanges.anyExchange().authenticated()
             }
             .oauth2Login { oAuth2LoginSpec: ServerHttpSecurity.OAuth2LoginSpec ->
                 val pkceResolver = DefaultServerOAuth2AuthorizationRequestResolver(clientRegistrationRepository)
-                pkceResolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce())
+                pkceResolver.setAuthorizationRequestCustomizer { builder ->
+                    OAuth2AuthorizationRequestCustomizers.withPkce().accept(builder)
+                }
 
                 val spaServerOAuth2AuthorizationRequestResolver = SpaServerOAuth2AuthorizationRequestResolver(pkceResolver, signInProperties.redirectQueryParam)
                 oAuth2LoginSpec.authorizationRequestResolver(spaServerOAuth2AuthorizationRequestResolver)
@@ -72,7 +83,7 @@ class SecurityConfig(
                 exceptionHandlingSpec.accessDeniedHandler(accessDeniedHandler)
 
                 val httpStatusJsonServerAuthenticationEntryPoint =
-                    HttpStatusJsonServerAuthenticationEntryPoint(HttpStatus.UNAUTHORIZED, externalPassportCookieProperties.name)
+                    HttpStatusJsonServerAuthenticationEntryPoint(HttpStatus.UNAUTHORIZED)
                 exceptionHandlingSpec.authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint)
             }
             .logout { logoutSpec: ServerHttpSecurity.LogoutSpec ->
@@ -88,10 +99,27 @@ class SecurityConfig(
                     )
                 )
             }
-            .cors { it.disable() }
             .csrf { it.disable() }
 
         return http.build()
+    }
+
+    @Bean
+    fun corsConfigSource(globalCorsProperties: GlobalCorsProperties): CorsConfigurationSource {
+        val corsConfig = CorsConfiguration()
+
+        val globalCorsConfiguration = globalCorsProperties.corsConfigurations["/**"]
+            ?: throw Exception("No global cors configuration found")
+
+        corsConfig.allowedOrigins = globalCorsConfiguration.allowedOrigins
+        corsConfig.allowedMethods = globalCorsConfiguration.allowedMethods
+        corsConfig.allowedHeaders = globalCorsConfiguration.allowedHeaders
+        corsConfig.allowCredentials = globalCorsConfiguration.allowCredentials
+
+        val source = UrlBasedCorsConfigurationSource()
+        source.registerCorsConfiguration("/**", corsConfig)
+
+        return source
     }
 
     @Bean
@@ -122,16 +150,16 @@ class SecurityConfig(
     }
 
     private fun oidcLogoutSuccessHandler(clientRegistrationRepository: ReactiveClientRegistrationRepository): ServerLogoutSuccessHandler {
-        val delegate = OidcClientInitiatedServerLogoutSuccessHandler(clientRegistrationRepository)
+        val oidcBackChannelServerLogoutHandler = OidcClientInitiatedServerLogoutSuccessHandler(clientRegistrationRepository)
 
         return DelegateServerSuccessLogoutHandler(
-            ServerLogoutSuccessHandler { exchange: WebFilterExchange, authentication: Authentication? ->
+            ServerLogoutSuccessHandler { exchange: WebFilterExchange, authentication: Authentication ->
                 exchange.exchange.request.queryParams.getFirst(signOutProperties.redirectQueryParam)?.let {
-                    delegate.setPostLogoutRedirectUri(it)
-                    delegate.setLogoutSuccessUrl(URI.create(it))
+                    oidcBackChannelServerLogoutHandler.setPostLogoutRedirectUri(it)
+                    oidcBackChannelServerLogoutHandler.setLogoutSuccessUrl(URI.create(it))
                 }
 
-                delegate.onLogoutSuccess(exchange, authentication)
+                oidcBackChannelServerLogoutHandler.onLogoutSuccess(exchange, authentication)
             }
         )
     }
