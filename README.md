@@ -5,8 +5,7 @@
 ## Технологический стек
 
 * Kotlin (2.2.1)
-* Spring (3.3.4)
-* Spring Security (oauth2-client, oauth2-resource-server)
+* Spring (3.3.4) (Security, Redis)
 
 ## Environment
 
