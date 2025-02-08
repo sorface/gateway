@@ -22,7 +22,7 @@ class HttpStatusJsonServerAuthenticationEntryPoint(
             .flatMap { response ->
                 response.setStatusCode(httpStatus)
                 response.headers.contentType = MediaType.APPLICATION_JSON
-                return@flatMap JsonHttpResponseUtils.buildJsonAuthorizationError(response, httpStatus, ex)
+                return@flatMap JsonHttpResponseUtils.buildJsonResponseWithException(response, httpStatus, ex)
             }
     }
 }

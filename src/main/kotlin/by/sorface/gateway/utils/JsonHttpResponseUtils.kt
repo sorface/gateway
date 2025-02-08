@@ -1,6 +1,5 @@
 package by.sorface.gateway.utils
 
-import by.sorface.gateway.records.AuthorizationErrorOperation
 import by.sorface.gateway.records.ErrorOperation
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -12,20 +11,12 @@ object JsonHttpResponseUtils {
 
     private val OBJECT_MAPPER = ObjectMapper()
 
-    fun buildJsonAuthorizationError(response: ServerHttpResponse, httpStatus: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR, throwable: Throwable, authentication: Boolean = false): Mono<Void> {
-        return buildJsonAuthorizationException(response, httpStatus, throwable.message, authentication)
-    }
-
     fun buildJsonResponseWithException(response: ServerHttpResponse, httpStatus: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR, throwable: Throwable): Mono<Void> {
         return buildJsonResponseWithException(response, httpStatus, throwable.message)
     }
 
     fun buildJsonResponseWithException(response: ServerHttpResponse, httpStatus: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR, message: String? = null): Mono<Void> {
         return buildJsonResponseWithException(response, httpStatus, ErrorOperation(httpStatus.value(), message))
-    }
-
-    private fun buildJsonAuthorizationException(response: ServerHttpResponse, httpStatus: HttpStatus = HttpStatus.INTERNAL_SERVER_ERROR, message: String? = null, authentication: Boolean = false): Mono<Void> {
-        return buildJsonResponseWithException(response, httpStatus, AuthorizationErrorOperation(httpStatus.value(), message, authentication))
     }
 
     private fun buildJsonResponseWithException(response: ServerHttpResponse, httpStatus: HttpStatus, jsonObject: Any): Mono<Void> {
