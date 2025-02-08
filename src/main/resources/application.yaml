@@ -1,9 +1,16 @@
 server:
   port: 9000
 
+application:
+  metadata:
+    version: ${APPLICATION_METADATA_VERSION}
+
 spring:
   application:
     name: gateway
+  banner:
+    charset: UTF-8
+    location: classpath:banner.txt
 
   config:
     import:
@@ -45,9 +52,9 @@ spring:
 
 logging:
   level:
-    root: debug
+    root: error
     reactor:
-      netty: debug
+      netty: error
     org:
       springframework:
         web:
