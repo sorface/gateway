@@ -17,6 +17,15 @@ spring:
 logging:
   level:
     root: info
+    org:
+      springframework:
+        web:
+          reactive: error
+          filter: error
+          cors: warn
+        security: error
+        cloud:
+          gateway: info
 
 ---
 
@@ -26,6 +35,7 @@ spring:
   config:
     activate:
       on-profile: docker
+
   cloud:
     gateway:
       httpclient:
@@ -35,15 +45,15 @@ spring:
 
 logging:
   level:
-    root: ERROR
+    root: debug
     reactor:
-      netty: ERROR
+      netty: debug
     org:
       springframework:
         web:
-          reactive: TRACE
-          filter: DEBUG
-          cors: TRACE
-        security: TRACE
+          reactive: info
+          filter: warn
+          cors: info
+        security: warn
         cloud:
-          gateway: TRACE
+          gateway: info
