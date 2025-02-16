@@ -21,6 +21,6 @@ spring:
             jwk-set-uri: ${PASSPORT_SERVICE_URL}/oauth2/jwks
             user-name-attribute: "sub"
 
-      resourceserver:
+      resource-server:
         jwt:
           jwk-set-uri: ${PASSPORT_SERVICE_URL}/oauth2/jwks
