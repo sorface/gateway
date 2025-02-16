@@ -14,9 +14,10 @@
 
 ### Application Metadata
 
-| Environment                  | Описание          | Store    | Значение DEV ~ PROD                | Тип данных |
-|------------------------------|-------------------|----------|------------------------------------|------------|
-| APPLICATION_METADATA_VERSION | Версия приложения | pipeline | `1.0.0`' ~ `BUILD_CURRENT_VERSION` | string     |
+| Environment                  | Описание          | Store     | Значение DEV ~ PROD                | Тип данных |
+|------------------------------|-------------------|-----------|------------------------------------|------------|
+| APPLICATION_METADATA_VERSION | Версия приложения | ConfigMap | `1.0.0`' ~ `BUILD_CURRENT_VERSION` | string     |
+| APPLICATION_TARGET_PORT      | Порт запуска      | ConfigMap | `9000`' ~ `...`                    | integer    |
 
 ### Cors
 

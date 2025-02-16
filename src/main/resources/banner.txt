@@ -5,4 +5,4 @@
 .-'    |' '-' '|  |   |  .-'\ '-'  \ `--.\   --. '  '--'  |\ '-'  |  |  |  \   --.|   .'.   |\ '-'  |  \   '
 `-----'  `---' `--'   `--'   `--`--'`---' `----'  `------'  `--`--'  `--'   `----''--'   '--' `--`--'.-'  /
                                                                                                      `---'
-@ sorface [${application.metadata.version}]
+@ sorface [build version ${application.metadata.version}]
