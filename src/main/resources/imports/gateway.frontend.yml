@@ -18,7 +18,7 @@ gateway.frontend:
 spring:
   config:
     activate:
-      on-profile: docker
+      on-profile: development
 
 gateway.frontend:
   security:

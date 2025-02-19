@@ -33,3 +33,13 @@ spring:
           filters:
             - RewritePath=/socket/interview/room/(?<segment>.*),/$\{segment}
             - TokenRelay=
+
+        # document backend
+
+        - id: document-api
+          uri: ${DOCUMENT_SERVICE_URL:http://localhost:9005}
+          predicates:
+            - Path=/document/**
+          filters:
+            - TokenRelay=
+            - RewritePath=/document/(?<segment>.*),/internal/document/s3/$\{segment}

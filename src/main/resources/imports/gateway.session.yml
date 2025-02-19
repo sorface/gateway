@@ -9,12 +9,12 @@ spring.session:
     cleanup-cron: 0 * * * * *
 
 gateway.session.cookie:
-  domain: ${GATEWAY_SESSION_COOKIE_DOMAIN}
-  name: ${GATEWAY_SESSION_COOKIE_NAME}
-  http-only: ${GATEWAY_SESSION_COOKIE_HTTP_ONLY}
-  path: ${GATEWAY_SESSION_COOKIE_PATH}
-  secure: ${GATEWAY_SESSION_COOKIE_SECURE}
-  same-site: ${GATEWAY_SESSION_COOKIE_SAME_SITE}
+  domain: ${GATEWAY_SESSION_COOKIE_DOMAIN:localhost}
+  name: ${GATEWAY_SESSION_COOKIE_NAME:gtw_sid}
+  http-only: ${GATEWAY_SESSION_COOKIE_HTTP_ONLY:true}
+  path: ${GATEWAY_SESSION_COOKIE_PATH:/}
+  secure: ${GATEWAY_SESSION_COOKIE_SECURE:true}
+  same-site: ${GATEWAY_SESSION_COOKIE_SAME_SITE:none}
 
 server.reactive.session:
   timeout: 5d

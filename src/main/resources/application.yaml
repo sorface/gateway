@@ -41,7 +41,7 @@ logging:
 spring:
   config:
     activate:
-      on-profile: docker
+      on-profile: development
 
   cloud:
     gateway:
