@@ -37,7 +37,7 @@ spring:
         # document backend
 
         - id: document-api
-          uri: ${DOCUMENT_SERVICE_URL:http://localhost:9005}
+          uri: ${DOCUMENT_SERVICE_URL}
           predicates:
             - Path=/document/**
           filters:
