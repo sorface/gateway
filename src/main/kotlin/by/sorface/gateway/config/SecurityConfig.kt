@@ -4,6 +4,8 @@ import by.sorface.gateway.config.entrypoints.HttpStatusJsonServerAuthenticationE
 import by.sorface.gateway.config.handlers.*
 import by.sorface.gateway.config.resolvers.SpaServerOAuth2AuthorizationRequestResolver
 import by.sorface.gateway.properties.*
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.web.ServerProperties
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler
@@ -53,6 +55,8 @@ class SecurityConfig(
     private val signOutProperties: SignOutProperties,
     private val securityWhiteList: SecurityWhiteList
 ) {
+
+    private val log = LoggerFactory.getLogger(SecurityConfig::class.java)
 
     @Bean
     fun securityFilterChain(http: ServerHttpSecurity, clientRegistrationRepository: ReactiveClientRegistrationRepository,
@@ -110,6 +114,8 @@ class SecurityConfig(
 
         val globalCorsConfiguration = globalCorsProperties.corsConfigurations["/**"]
             ?: throw Exception("No global cors configuration found")
+
+        log.info(ObjectMapper().writeValueAsString(globalCorsConfiguration))
 
         corsConfig.allowedOrigins = globalCorsConfiguration.allowedOrigins
         corsConfig.allowedMethods = globalCorsConfiguration.allowedMethods
