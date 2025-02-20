@@ -5,8 +5,8 @@ spring:
         registration:
           passport:
             provider: passport
-            client-id: ${PASSPORT_CLIENT_ID}
-            client-secret: ${PASSPORT_CLIENT_SECRET}
+            client-id: ${IDP_CLIENT_ID}
+            client-secret: ${IDP_CLIENT_SECRET}
             authorization-grant-type: authorization_code
             redirect-uri: "${GATEWAY_SERVICE_URL}/login/oauth2/code/passport"
             scope:
@@ -14,13 +14,13 @@ spring:
               - profile
         provider:
           passport:
-            issuer-uri: ${PASSPORT_SERVICE_URL}
-            token-uri: ${PASSPORT_SERVICE_URL}/oauth2/token
-            authorization-uri: ${PASSPORT_SERVICE_URL}/oauth2/authorize
-            user-info-uri: ${PASSPORT_SERVICE_URL}/userinfo
-            jwk-set-uri: ${PASSPORT_SERVICE_URL}/oauth2/jwks
+            issuer-uri: ${IDP_ISSUER_URL}
+            token-uri: ${IDP_ISSUER_URL}/oauth2/token
+            authorization-uri: ${IDP_ISSUER_URL}/oauth2/authorize
+            user-info-uri: ${IDP_ISSUER_URL}/userinfo
+            jwk-set-uri: ${IDP_ISSUER_URL}/oauth2/jwks
             user-name-attribute: "sub"
 
       resource-server:
         jwt:
-          jwk-set-uri: ${PASSPORT_SERVICE_URL}/oauth2/jwks
+          jwk-set-uri: ${IDP_ISSUER_URL}/oauth2/jwks
