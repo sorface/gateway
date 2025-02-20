@@ -36,6 +36,13 @@ logging:
   pattern:
     console: '%d{dd.MM.yyyy HH:mm:ss.SSS} %highlight(%-5level) [%blue(%X{traceId:-})|%green(%X{spanId})] [%thread] %magenta([%file:%line]) : %msg%n'
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: *
+    enabled-by-default: true
+
 ---
 
 # docker profile configuration
@@ -54,6 +61,9 @@ spring:
 
 management:
   endpoints:
+    web:
+      exposure:
+        include: *
     enabled-by-default: true
 
 logging:
