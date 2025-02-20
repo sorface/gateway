@@ -52,6 +52,10 @@ spring:
       httpserver:
         wiretap: true
 
+management:
+  endpoints:
+    enabled-by-default: true
+
 logging:
   level:
     root: trace
