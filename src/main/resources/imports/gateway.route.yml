@@ -24,16 +24,6 @@ spring:
             - TokenRelay=
             - RewritePath=/passport/(?<segment>.*),/$\{segment}
 
-        # sockets
-
-        - id: socket-interview-room
-          uri: ${INTERVIEW_SERVICE_URL}
-          predicates:
-            - Path=/socket/interview/room/**
-          filters:
-            - RewritePath=/socket/interview/room/(?<segment>.*),/$\{segment}
-            - TokenRelay=
-
         # document backend
 
         - id: document-api
@@ -43,3 +33,13 @@ spring:
           filters:
             - TokenRelay=
             - RewritePath=/document/(?<segment>.*),/internal/document/s3/$\{segment}
+
+        # sockets
+
+        - id: socket-interview-room
+          uri: ${INTERVIEW_SERVICE_URL}
+          predicates:
+            - Path=/socket/interview/room/**
+          filters:
+            - RewritePath=/socket/interview/room/(?<segment>.*),/$\{segment}
+            - TokenRelay=

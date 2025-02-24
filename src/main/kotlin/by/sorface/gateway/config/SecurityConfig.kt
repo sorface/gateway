@@ -149,6 +149,8 @@ class SecurityConfig(
         return webSessionIdResolver
     }
 
+
+
     @Bean
     @ConditionalOnMissingBean(value = [ErrorWebExceptionHandler::class])
     fun customErrorWebExceptionHandler(): ErrorWebExceptionHandler {

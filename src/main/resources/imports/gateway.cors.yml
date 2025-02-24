@@ -1,10 +1,38 @@
+---
 spring:
+  config:
+    activate:
+      on-profile: production
+
   cloud:
     gateway:
       global-cors:
         corsConfigurations:
           '[/**]':
-            allowedOrigins: ${CORS_ALLOWED_ORIGINS}
-            allowedMethods: ${CORS_ALLOWED_METHODS}
-            allowedHeaders: ${CORS_ALLOWED_HEADERS}
-            allow-credentials: ${CORS_ALLOW_CREDENTIALS}
+            allowedOrigins:
+              - 'https://id.sorface.ru'
+              - 'https://passport.sorface.ru'
+              - 'https://interview.sorface.ru'
+              - 'https://api.idp.sorface.ru'
+            allowedMethods: '*'
+            allowedHeaders: '*'
+            allow-credentials: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: development
+
+  cloud:
+    gateway:
+      global-cors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - 'http://localhost:8080'
+              - 'http://localhost:9020'
+              - 'http://localhost:3000'
+            allowedMethods: '*'
+            allowedHeaders: '*'
+            allow-credentials: true
