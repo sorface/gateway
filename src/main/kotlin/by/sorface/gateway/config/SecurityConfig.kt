@@ -115,7 +115,7 @@ class SecurityConfig(
         val globalCorsConfiguration = globalCorsProperties.corsConfigurations["/**"]
             ?: throw Exception("No global cors configuration found")
 
-        log.info(ObjectMapper().writeValueAsString(globalCorsConfiguration))
+        log.info("CORS CONFIG -> {}{}", System.lineSeparator(), ObjectMapper().writeValueAsString(globalCorsConfiguration))
 
         corsConfig.allowedOrigins = globalCorsConfiguration.allowedOrigins
         corsConfig.allowedMethods = globalCorsConfiguration.allowedMethods
