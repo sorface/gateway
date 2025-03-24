@@ -86,7 +86,10 @@ spring:
   config:
     activate:
       on-profile: kube
+
   cloud:
     kubernetes:
+      loadbalancer:
+        mode: service
       discovery:
         enabled: true
