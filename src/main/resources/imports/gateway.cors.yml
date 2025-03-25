@@ -11,6 +11,7 @@ spring:
           '[/**]':
             allowedOrigins:
               - 'https://id.sorface.ru'
+              - 'https://api.gateway.sorface.ru'
               - 'https://passport.sorface.ru'
               - 'https://interview.sorface.ru'
               - 'https://api.idp.sorface.ru'

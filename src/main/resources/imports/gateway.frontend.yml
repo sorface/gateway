@@ -11,6 +11,7 @@ gateway.frontend:
     redirect-query-param: 'redirect-location'
   security:
     permit-all-patterns:
+      - '/login/oauth2/**'
       - '/passport/api/csrf'
       - '/passport/api/accounts/authenticated'
 

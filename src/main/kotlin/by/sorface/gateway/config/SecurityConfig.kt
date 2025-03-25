@@ -6,6 +6,7 @@ import by.sorface.gateway.config.resolvers.SpaServerOAuth2AuthorizationRequestRe
 import by.sorface.gateway.properties.*
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.web.ServerProperties
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler
@@ -45,7 +46,7 @@ import org.springframework.web.server.session.WebSessionIdResolver
 import java.net.URI
 
 @EnableWebFlux
-@Configuration
+@Configuration(proxyBeanMethods = true)
 @EnableWebFluxSecurity
 @EnableRedisIndexedWebSession(redisNamespace = "gateway:sessions", maxInactiveIntervalInSeconds = 432000)
 @EnableRedisRepositories(enableKeyspaceEvents = RedisKeyValueAdapter.EnableKeyspaceEvents.ON_STARTUP)
@@ -59,10 +60,10 @@ class SecurityConfig(
     private val log = LoggerFactory.getLogger(SecurityConfig::class.java)
 
     @Bean
-    fun securityFilterChain(http: ServerHttpSecurity, clientRegistrationRepository: ReactiveClientRegistrationRepository,
+    fun securityFilterChain(http: ServerHttpSecurity,
+                            clientRegistrationRepository: ReactiveClientRegistrationRepository,
                             globalCorsProperties: GlobalCorsProperties): SecurityWebFilterChain {
         http
-            .cors(Customizer.withDefaults())
             .authorizeExchange { exchanges: ServerHttpSecurity.AuthorizeExchangeSpec ->
                 exchanges.pathMatchers(*securityWhiteList.permitAllPatterns.toTypedArray()).permitAll()
                 exchanges.pathMatchers(HttpMethod.OPTIONS).permitAll()
@@ -103,6 +104,7 @@ class SecurityConfig(
                     )
                 )
             }
+            .cors { corsConfigSource(globalCorsProperties) }
             .csrf { it.disable() }
 
         return http.build()
