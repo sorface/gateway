@@ -91,5 +91,7 @@ spring:
     kubernetes:
       loadbalancer:
         mode: service
+        enabled: true
       discovery:
         enabled: true
+        cache-loading-timeout-seconds: 60
