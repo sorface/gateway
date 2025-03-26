@@ -21,8 +21,8 @@ spring:
           predicates:
             - Path=/passport/**
           filters:
-            - TokenRelay=
             - RewritePath=/passport/(?<segment>.*),/$\{segment}
+            - TokenRelay=
 
         # document backend
 
@@ -31,8 +31,8 @@ spring:
           predicates:
             - Path=/document/**
           filters:
-            - TokenRelay=
             - RewritePath=/document/(?<segment>.*),/internal/document/s3/$\{segment}
+            - TokenRelay=
 
         # sockets
 

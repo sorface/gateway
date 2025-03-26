@@ -33,6 +33,7 @@ spring:
             allowedOrigins:
               - 'http://localhost:8080'
               - 'http://localhost:9020'
+              - 'http://localhost:9000'
               - 'http://localhost:3000'
               - 'http://localhost:9030'
             allowedMethods: '*'
