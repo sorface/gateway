@@ -3,7 +3,6 @@ package by.sorface.gateway.config
 import by.sorface.gateway.config.entrypoints.HttpStatusJsonServerAuthenticationEntryPoint
 import by.sorface.gateway.config.handlers.*
 import by.sorface.gateway.config.resolvers.SpaServerOAuth2AuthorizationRequestResolver
-import by.sorface.gateway.dao.nosql.model.OAuth2AuthorizedClientModel
 import by.sorface.gateway.properties.GatewaySessionCookieProperties
 import by.sorface.gateway.properties.SecurityWhiteList
 import by.sorface.gateway.properties.SignInProperties
@@ -11,23 +10,12 @@ import by.sorface.gateway.properties.SignOutProperties
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
-import org.springframework.boot.autoconfigure.data.redis.RedisProperties
 import org.springframework.boot.autoconfigure.web.ServerProperties
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler
 import org.springframework.cloud.gateway.config.GlobalCorsProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
-import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
-import org.springframework.data.redis.connection.RedisConfiguration
-import org.springframework.data.redis.connection.RedisStandaloneConfiguration
-import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
-import org.springframework.data.redis.core.ReactiveRedisTemplate
-import org.springframework.data.redis.core.RedisKeyValueAdapter
-import org.springframework.data.redis.repository.configuration.EnableRedisRepositories
-import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer
-import org.springframework.data.redis.serializer.RedisSerializationContext
-import org.springframework.data.redis.serializer.StringRedisSerializer
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
@@ -124,7 +112,7 @@ class SecurityConfig(
 
                 val httpStatusJsonServerAuthenticationEntryPoint = HttpStatusJsonServerAuthenticationEntryPoint(HttpStatus.UNAUTHORIZED)
 
-                oAuth2ResourceServerSpec.authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint);
+                oAuth2ResourceServerSpec.authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint)
             }
             .cors { corsConfigSource(globalCorsProperties) }
             .csrf { it.disable() }

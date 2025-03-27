@@ -24,4 +24,4 @@ data class GatewaySessionCookieProperties(
     /*SameSite session cookie*/
     val sameSite: SameSite = SameSite.LAX,
 
-)
+    )

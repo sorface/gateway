@@ -44,7 +44,10 @@ class RedisConfiguration {
     fun lettuceConnectionFactory(redisStandaloneConfiguration: RedisConfiguration): LettuceConnectionFactory = LettuceConnectionFactory(redisStandaloneConfiguration)
 
     @Bean
-    fun reactiveRedisTemplate(lettuceConnectionFactory: ReactiveRedisConnectionFactory, jackson2JsonRedisSerializer: Jackson2JsonRedisSerializer<OAuth2AuthorizedClientModel>): ReactiveRedisTemplate<String, OAuth2AuthorizedClientModel> {
+    fun reactiveRedisTemplate(
+        lettuceConnectionFactory: ReactiveRedisConnectionFactory,
+        jackson2JsonRedisSerializer: Jackson2JsonRedisSerializer<OAuth2AuthorizedClientModel>
+    ): ReactiveRedisTemplate<String, OAuth2AuthorizedClientModel> {
         val keySerializer = StringRedisSerializer()
 
         val builder = RedisSerializationContext.newSerializationContext<String, OAuth2AuthorizedClientModel>(keySerializer)

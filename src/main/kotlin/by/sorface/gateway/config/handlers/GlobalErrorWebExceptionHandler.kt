@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono
 /**
  * Глобальный обработчик исключений
  */
-class  GlobalErrorWebExceptionHandler : ErrorWebExceptionHandler {
+class GlobalErrorWebExceptionHandler : ErrorWebExceptionHandler {
 
     /**
      * Обработка глобального исключения

@@ -6,7 +6,8 @@ import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequ
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
 
-class SpaServerOAuth2AuthorizationRequestResolver(private val delegate: ServerOAuth2AuthorizationRequestResolver, private val saveParamName: String) : ServerOAuth2AuthorizationRequestResolver {
+class SpaServerOAuth2AuthorizationRequestResolver(private val delegate: ServerOAuth2AuthorizationRequestResolver, private val saveParamName: String) :
+    ServerOAuth2AuthorizationRequestResolver {
 
     override fun resolve(exchange: ServerWebExchange?): Mono<OAuth2AuthorizationRequest> {
         return delegate.resolve(exchange)
