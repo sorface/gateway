@@ -1,0 +1,32 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 71e04b7d-1fb6-4c16-8eb5-e73b29d2fa40
+      author: Павел Талайко
+
+      comment: 'Создание таблицы для хранения авторизированных пользователей classpath:org/springframework/security/oauth2/client/oauth2-client-schema.sql'
+
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: oauth2_authorized_client
+        - dbms:
+            type: postgresql
+
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE oauth2_authorized_client (
+                client_registration_id varchar(100) NOT NULL,
+                principal_name varchar(200) NOT NULL,
+                access_token_type varchar(100) NOT NULL,
+                access_token_value bytea NOT NULL,
+                access_token_issued_at timestamp NOT NULL,
+                access_token_expires_at timestamp NOT NULL,
+                access_token_scopes varchar(1000) DEFAULT NULL,
+                refresh_token_value bytea DEFAULT NULL,
+                refresh_token_issued_at timestamp DEFAULT NULL,
+                created_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                PRIMARY KEY (client_registration_id, principal_name)
+              );

@@ -1,8 +1,15 @@
-spring.data.redis:
-  host: ${REDIS_HOST}
-  username: ${REDIS_USERNAME}
-  password: ${REDIS_PASSWORD}
-  port: ${REDIS_PORT}
+spring:
+  data.redis:
+    host: ${REDIS_HOST}
+    username: ${REDIS_USERNAME}
+    password: ${REDIS_PASSWORD}
+    port: ${REDIS_PORT}
+    database: 1
+    lettuce:
+      pool:
+        enabled: true
 
-  lettuce.pool:
-    enabled: true
+  r2dbc:
+    username: user
+    password: user
+    url: r2dbc:postgresql://localhost:5444/gateway

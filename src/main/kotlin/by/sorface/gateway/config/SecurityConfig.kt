@@ -3,7 +3,10 @@ package by.sorface.gateway.config
 import by.sorface.gateway.config.entrypoints.HttpStatusJsonServerAuthenticationEntryPoint
 import by.sorface.gateway.config.handlers.*
 import by.sorface.gateway.config.resolvers.SpaServerOAuth2AuthorizationRequestResolver
-import by.sorface.gateway.properties.*
+import by.sorface.gateway.properties.GatewaySessionCookieProperties
+import by.sorface.gateway.properties.SecurityWhiteList
+import by.sorface.gateway.properties.SignInProperties
+import by.sorface.gateway.properties.SignOutProperties
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,11 +22,13 @@ import org.springframework.data.redis.repository.configuration.EnableRedisReposi
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
+import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.core.Authentication
+import org.springframework.security.oauth2.client.R2dbcReactiveOAuth2AuthorizedClientService
 import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcClientInitiatedServerLogoutSuccessHandler
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers
@@ -35,6 +40,7 @@ import org.springframework.security.web.server.authentication.logout.SecurityCon
 import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler
 import org.springframework.security.web.server.authentication.logout.WebSessionServerLogoutHandler
 import org.springframework.session.ReactiveSessionRepository
+import org.springframework.session.SaveMode
 import org.springframework.session.Session
 import org.springframework.session.data.redis.config.annotation.web.server.EnableRedisIndexedWebSession
 import org.springframework.web.cors.CorsConfiguration
@@ -45,10 +51,14 @@ import org.springframework.web.server.session.CookieWebSessionIdResolver
 import org.springframework.web.server.session.WebSessionIdResolver
 import java.net.URI
 
+@EnableRedisIndexedWebSession(
+    maxInactiveIntervalInSeconds = -1,
+    redisNamespace = "gateway",
+    saveMode = SaveMode.ON_SET_ATTRIBUTE
+)
 @EnableWebFlux
 @Configuration(proxyBeanMethods = true)
 @EnableWebFluxSecurity
-@EnableRedisIndexedWebSession(redisNamespace = "gateway:sessions", maxInactiveIntervalInSeconds = 432000)
 @EnableRedisRepositories(enableKeyspaceEvents = RedisKeyValueAdapter.EnableKeyspaceEvents.ON_STARTUP)
 @EnableReactiveMethodSecurity
 class SecurityConfig(
@@ -59,10 +69,22 @@ class SecurityConfig(
 
     private val log = LoggerFactory.getLogger(SecurityConfig::class.java)
 
+    @Autowired
+    private lateinit var registrationRepository: ReactiveClientRegistrationRepository
+
     @Bean
-    fun securityFilterChain(http: ServerHttpSecurity,
-                            clientRegistrationRepository: ReactiveClientRegistrationRepository,
-                            globalCorsProperties: GlobalCorsProperties): SecurityWebFilterChain {
+    fun r2dbcReactiveOAuth2AuthorizedClientService(databaseClient: DatabaseClient): R2dbcReactiveOAuth2AuthorizedClientService {
+        return R2dbcReactiveOAuth2AuthorizedClientService(databaseClient, registrationRepository);
+    }
+
+    @Bean
+    fun securityFilterChain(
+        http: ServerHttpSecurity,
+        clientRegistrationRepository: ReactiveClientRegistrationRepository,
+        globalCorsProperties: GlobalCorsProperties,
+        r2dbcReactiveOAuth2AuthorizedClientService: R2dbcReactiveOAuth2AuthorizedClientService,
+        oAuth2ClientServerLogoutSuccessHandler: OAuth2ClientServerLogoutSuccessHandler
+    ): SecurityWebFilterChain {
         http
             .authorizeExchange { exchanges: ServerHttpSecurity.AuthorizeExchangeSpec ->
                 exchanges.pathMatchers(*securityWhiteList.permitAllPatterns.toTypedArray()).permitAll()
@@ -80,6 +102,8 @@ class SecurityConfig(
 
                 oAuth2LoginSpec.authenticationSuccessHandler(StateRedirectUrlServerAuthenticationSuccessHandler())
 
+                oAuth2LoginSpec.authorizedClientService(r2dbcReactiveOAuth2AuthorizedClientService)
+
                 val authenticationFailureHandler = HttpStatusJsonAuthenticationFailureHandler(HttpStatus.UNAUTHORIZED)
                 oAuth2LoginSpec.authenticationFailureHandler(authenticationFailureHandler)
             }
@@ -95,7 +119,7 @@ class SecurityConfig(
                 val logoutHandler = DelegatingServerLogoutHandler(WebSessionServerLogoutHandler(), SecurityContextServerLogoutHandler())
 
                 logoutSpec.logoutHandler(logoutHandler)
-                logoutSpec.logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository))
+                logoutSpec.logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository, oAuth2ClientServerLogoutSuccessHandler))
             }
             .oauth2ResourceServer { oAuth2ResourceServerSpec: ServerHttpSecurity.OAuth2ResourceServerSpec ->
                 oAuth2ResourceServerSpec.jwt(Customizer.withDefaults()).authenticationFailureHandler(
@@ -103,6 +127,13 @@ class SecurityConfig(
                         HttpStatus.UNAUTHORIZED
                     )
                 )
+
+                val accessDeniedHandler = HttpStatusJsonServerAccessDeniedHandler(HttpStatus.FORBIDDEN)
+                oAuth2ResourceServerSpec.accessDeniedHandler(accessDeniedHandler)
+
+                val httpStatusJsonServerAuthenticationEntryPoint = HttpStatusJsonServerAuthenticationEntryPoint(HttpStatus.UNAUTHORIZED)
+
+                oAuth2ResourceServerSpec.authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint);
             }
             .cors { corsConfigSource(globalCorsProperties) }
             .csrf { it.disable() }
@@ -152,14 +183,16 @@ class SecurityConfig(
     }
 
 
-
     @Bean
     @ConditionalOnMissingBean(value = [ErrorWebExceptionHandler::class])
     fun customErrorWebExceptionHandler(): ErrorWebExceptionHandler {
         return GlobalErrorWebExceptionHandler()
     }
 
-    private fun oidcLogoutSuccessHandler(clientRegistrationRepository: ReactiveClientRegistrationRepository): ServerLogoutSuccessHandler {
+    private fun oidcLogoutSuccessHandler(
+        clientRegistrationRepository: ReactiveClientRegistrationRepository,
+        oAuth2ClientServerLogoutSuccessHandler: OAuth2ClientServerLogoutSuccessHandler
+    ): ServerLogoutSuccessHandler {
         val oidcBackChannelServerLogoutHandler = OidcClientInitiatedServerLogoutSuccessHandler(clientRegistrationRepository)
 
         return DelegateServerSuccessLogoutHandler(
@@ -170,7 +203,8 @@ class SecurityConfig(
                 }
 
                 oidcBackChannelServerLogoutHandler.onLogoutSuccess(exchange, authentication)
-            }
+            },
+            oAuth2ClientServerLogoutSuccessHandler
         )
     }
 

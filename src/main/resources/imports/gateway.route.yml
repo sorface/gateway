@@ -34,7 +34,7 @@ spring:
             - RewritePath=/document/(?<segment>.*),/internal/document/s3/$\{segment}
             - TokenRelay=
 
-        # sockets
+         # sockets
 
         - id: socket-interview-room
           uri: ${INTERVIEW_SERVICE_URL}
