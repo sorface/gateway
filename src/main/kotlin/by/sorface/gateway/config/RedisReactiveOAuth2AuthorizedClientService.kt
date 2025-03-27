@@ -39,7 +39,7 @@ class RedisReactiveOAuth2AuthorizedClientService(
                 val oAuth2AuthorizedClientModel =
                     map("${clientRegistration.registrationId}_${principal.name}", principal.name, clientRegistration, authorizedClient)
 
-                return@flatMap lettuceRedisTemplate.opsForValue().getAndSet("${clientRegistration.registrationId}_${principal.name}", oAuth2AuthorizedClientModel)
+                return@flatMap lettuceRedisTemplate.opsForValue().set("${clientRegistration.registrationId}_${principal.name}", oAuth2AuthorizedClientModel)
                     .doOnError {
                         log.error("error occurred while saving authorization client for $principal. ${it.message}")
                     }
