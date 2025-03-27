@@ -28,25 +28,7 @@ spring:
         show_sql: true
         format_sql: true
 
-  liquibase:
-    change-log: migration/master.yaml
-    enabled: true
-    url: jdbc:postgresql://localhost:5444/gateway
-    user: user
-    password: user
-
 logging:
-  level:
-    root: info
-    org:
-      springframework:
-        web:
-          reactive: error
-          filter: error
-          cors: warn
-        security: error
-        cloud:
-          gateway: info
   pattern:
     console: '%d{dd.MM.yyyy HH:mm:ss.SSS} %highlight(%-5level) [%blue(%X{traceId:-})|%green(%X{spanId})] [%thread] %magenta([%file:%line]) : %msg%n'
 
@@ -82,16 +64,17 @@ management:
 
 logging:
   level:
-    by.sorface.gateway:
-        config: info
-    root: info
+    io.r2dbc.postgresql.QUERY: debug
+    io.r2dbc.postgresql.PARAM: debug
+    by.sorface.gateway: debug
+    root: warn
     reactor:
-      netty: trace
+      netty: warn
     org:
       springframework:
         web:
           reactive: warn
-          filter: trace
+          filter: warn
           cors: warn
         security: warn
         cloud:

@@ -1,9 +1,5 @@
 spring.session:
-  timeout: 5d
   redis:
-    repository-type: indexed
-    namespace: gateway:sessions
-    save-mode: on_set_attribute
     configure-action: notify_keyspace_events
     flush-mode: on_save
     cleanup-cron: 0 * * * * *
@@ -15,6 +11,3 @@ gateway.session.cookie:
   path: ${GATEWAY_SESSION_COOKIE_PATH:/}
   secure: ${GATEWAY_SESSION_COOKIE_SECURE:true}
   same-site: ${GATEWAY_SESSION_COOKIE_SAME_SITE:none}
-
-server.reactive.session:
-  timeout: 5d
