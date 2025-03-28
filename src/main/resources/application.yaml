@@ -1,10 +1,13 @@
 server:
   port: 9000
 
+
 spring:
   application:
     name: gateway
     version: 1.0.0
+  reactor:
+    context-propagation: auto
 
   banner:
     charset: UTF-8
@@ -18,26 +21,50 @@ spring:
       - classpath:imports/gateway.route.yml
       - classpath:imports/gateway.security.yml
       - classpath:imports/gateway.frontend.yml
-
+  cloud:
+    gateway:
+      predicate:
+        remote-addr:
+          enabled: true
+      global-filter:
+        websocket-routing:
+          enabled: true
+      httpclient:
+        connect-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: none
     show-sql: true
     properties:
       hibernate:
-        show_sql: true
-        format_sql: true
+        show_sql: false
+        format_sql: false
 
 logging:
   pattern:
-    console: '%d{dd.MM.yyyy HH:mm:ss.SSS} %highlight(%-5level) [%blue(%X{traceId:-})|%green(%X{spanId})] [%thread] %magenta([%file:%line]) : %msg%n'
+    console: '%d{dd.MM.yyyy HH:mm:ss.SSS} %highlight(%-5level) [%thread] [${spring.application.name:},%X{traceId:-},%X{spanId:-}] %magenta([%file:%line]) : %msg%n'
+  level:
+    by:
+      sorface:
+        gateway: debug
+    root: error
+    org.springframework.security.oauth2.client: trace
 
 management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    propagation:
+      type: b3
   endpoints:
     web:
       exposure:
         include: '*'
     enabled-by-default: true
+  observations:
+    annotations:
+      enabled: true
 
 ---
 
@@ -61,26 +88,6 @@ management:
       exposure:
         include: '*'
     enabled-by-default: true
-
-logging:
-  level:
-    io.r2dbc.postgresql.QUERY: debug
-    io.r2dbc.postgresql.PARAM: debug
-    by.sorface.gateway: debug
-    root: warn
-    reactor:
-      netty: warn
-    org:
-      springframework:
-        web:
-          reactive: warn
-          filter: warn
-          cors: warn
-        security: warn
-        cloud:
-          gateway: warn
-  pattern:
-    console: '%d{dd.MM.yyyy HH:mm:ss.SSS} %highlight(%-5level) [%blue(%X{traceId:-})|%green(%X{spanId})] [%thread] %magenta([%file:%line]) : %msg%n'
 
 ---
 

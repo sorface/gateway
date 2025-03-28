@@ -34,6 +34,16 @@ spring:
             - RewritePath=/document/(?<segment>.*),/internal/document/s3/$\{segment}
             - TokenRelay=
 
+        # document backend
+
+        - id: copilot-api
+          uri: ${COPILOT_SERVICE_URL}
+          predicates:
+            - Path=/copilot/**
+          filters:
+            - RewritePath=/copilot/(?<segment>.*),/$\{segment}
+            - TokenRelay=
+
          # sockets
 
         - id: socket-interview-room
