@@ -154,6 +154,7 @@ class SecurityConfig(
             cookieBuilder.path(gatewaySessionCookieProperties.path)
             cookieBuilder.secure(gatewaySessionCookieProperties.secure)
             cookieBuilder.sameSite(gatewaySessionCookieProperties.sameSite.attributeValue())
+            cookieBuilder.maxAge(gatewaySessionCookieProperties.maxAge)
         }
 
         return webSessionIdResolver

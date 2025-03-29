@@ -2,6 +2,7 @@ package by.sorface.gateway.properties
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.web.server.Cookie.SameSite
+import kotlin.time.Duration
 
 @ConfigurationProperties(prefix = "gateway.session.cookie")
 data class GatewaySessionCookieProperties(
@@ -23,5 +24,7 @@ data class GatewaySessionCookieProperties(
 
     /*SameSite session cookie*/
     val sameSite: SameSite = SameSite.LAX,
+
+    val maxAge: java.time.Duration = java.time.Duration.ofDays(365)
 
     )

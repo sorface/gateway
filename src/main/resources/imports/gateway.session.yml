@@ -11,3 +11,4 @@ gateway.session.cookie:
   path: ${GATEWAY_SESSION_COOKIE_PATH:/}
   secure: ${GATEWAY_SESSION_COOKIE_SECURE:true}
   same-site: ${GATEWAY_SESSION_COOKIE_SAME_SITE:none}
+  max-age: 365d
