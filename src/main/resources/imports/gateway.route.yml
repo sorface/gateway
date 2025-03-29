@@ -41,7 +41,7 @@ spring:
           predicates:
             - Path=/copilot/**
           filters:
-            - RewritePath=/copilot/(?<segment>.*),/$\{segment}
+            - RewritePath=/copilot/(?<segment>.*),/api/$\{segment}
             - TokenRelay=
 
          # sockets
