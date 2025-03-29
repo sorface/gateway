@@ -19,6 +19,7 @@ import org.springframework.context.annotation.Primary
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
+import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
@@ -97,19 +98,20 @@ class SecurityConfig(
                 logoutSpec.logoutHandler(logoutHandler)
                 logoutSpec.logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository, oAuth2ClientServerLogoutSuccessHandler))
             }
-//            .oauth2ResourceServer { oAuth2ResourceServerSpec: ServerHttpSecurity.OAuth2ResourceServerSpec ->
-//                oAuth2ResourceServerSpec.jwt(Customizer.withDefaults()).authenticationFailureHandler(
-//                    HttpStatusJsonAuthenticationFailureHandler(
-//                        HttpStatus.UNAUTHORIZED
-//                    )
-//                )
-//
-//                val accessDeniedHandler = HttpStatusJsonServerAccessDeniedHandler(HttpStatus.FORBIDDEN)
-//                oAuth2ResourceServerSpec.accessDeniedHandler(accessDeniedHandler)
-//
-//                val httpStatusJsonServerAuthenticationEntryPoint = HttpStatusJsonServerAuthenticationEntryPoint(HttpStatus.UNAUTHORIZED)
-//                oAuth2ResourceServerSpec.authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint)
-//            }
+            .oauth2ResourceServer { oAuth2ResourceServerSpec: ServerHttpSecurity.OAuth2ResourceServerSpec ->
+                val httpStatusJsonAuthenticationFailureHandler = HttpStatusJsonAuthenticationFailureHandler(HttpStatus.UNAUTHORIZED)
+                val httpStatusJsonServerAuthenticationEntryPoint = HttpStatusJsonServerAuthenticationEntryPoint(HttpStatus.UNAUTHORIZED)
+                val accessDeniedHandler = HttpStatusJsonServerAccessDeniedHandler(HttpStatus.FORBIDDEN)
+
+                oAuth2ResourceServerSpec
+                    .jwt(Customizer.withDefaults())
+                    .authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint)
+                    .authenticationFailureHandler(httpStatusJsonAuthenticationFailureHandler)
+
+                oAuth2ResourceServerSpec.accessDeniedHandler(accessDeniedHandler)
+                oAuth2ResourceServerSpec.authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint)
+                oAuth2ResourceServerSpec.authenticationFailureHandler(httpStatusJsonAuthenticationFailureHandler)
+            }
             .cors { corsConfigSource(globalCorsProperties) }
             .csrf { it.disable() }
 
