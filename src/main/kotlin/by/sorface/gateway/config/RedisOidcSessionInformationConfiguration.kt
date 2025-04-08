@@ -1,13 +1,11 @@
 package by.sorface.gateway.config
 
-import by.sorface.gateway.dao.nosql.model.OidcSessionInformationModel
 import by.sorface.gateway.dao.nosql.model.converters.OidcSessionRedisSerializer
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.core.ReactiveRedisTemplate
-import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer
 import org.springframework.data.redis.serializer.RedisSerializationContext
 import org.springframework.data.redis.serializer.StringRedisSerializer
 import org.springframework.security.oauth2.client.oidc.session.OidcSessionInformation
@@ -39,6 +37,5 @@ class RedisOidcSessionInformationConfiguration {
 
         return ReactiveRedisTemplate(lettuceConnectionFactory, context)
     }
-
 
 }

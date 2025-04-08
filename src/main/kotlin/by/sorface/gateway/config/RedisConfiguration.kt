@@ -27,18 +27,11 @@ import org.springframework.data.redis.core.convert.RedisCustomConversions
 import org.springframework.data.redis.repository.configuration.EnableRedisRepositories
 import org.springframework.data.redis.serializer.*
 import org.springframework.session.SaveMode
+import org.springframework.session.data.redis.config.annotation.web.http.EnableRedisIndexedHttpSession
 import org.springframework.session.data.redis.config.annotation.web.server.EnableRedisIndexedWebSession
 
-
+@EnableRedisIndexedWebSession
 @Configuration
-@EnableRedisIndexedWebSession(
-    maxInactiveIntervalInSeconds = -1,
-    redisNamespace = "gateway",
-    saveMode = SaveMode.ON_SET_ATTRIBUTE
-)
-@EnableRedisRepositories(
-    enableKeyspaceEvents = RedisKeyValueAdapter.EnableKeyspaceEvents.ON_STARTUP
-)
 class RedisConfiguration {
 
     @Bean

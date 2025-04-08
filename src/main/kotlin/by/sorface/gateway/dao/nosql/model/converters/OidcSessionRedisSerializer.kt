@@ -1,15 +1,11 @@
 package by.sorface.gateway.dao.nosql.model.converters
 
-import by.sorface.gateway.config.fromByteArray
-import by.sorface.gateway.config.toByteArray
+import by.sorface.gateway.extension.fromByteArray
+import by.sorface.gateway.extension.toByteArray
 import org.springframework.data.convert.ReadingConverter
 import org.springframework.data.redis.serializer.RedisSerializer
 import org.springframework.security.oauth2.client.oidc.session.OidcSessionInformation
 import org.springframework.stereotype.Component
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
 
 /**
  * Конвертер, преобразующий массив байтов в объект [OidcSessionInformation].

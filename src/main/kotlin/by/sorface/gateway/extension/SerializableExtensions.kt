@@ -1,4 +1,4 @@
-package by.sorface.gateway.config
+package by.sorface.gateway.extension
 
 import java.io.*
 
