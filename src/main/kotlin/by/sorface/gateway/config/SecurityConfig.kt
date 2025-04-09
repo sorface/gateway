@@ -2,13 +2,16 @@ package by.sorface.gateway.config
 
 import by.sorface.gateway.config.entrypoints.HttpStatusJsonServerAuthenticationEntryPoint
 import by.sorface.gateway.config.handlers.*
+import by.sorface.gateway.config.repository.RedisReactiveOidcSessionRepository
 import by.sorface.gateway.config.resolvers.SpaServerOAuth2AuthorizationRequestResolver
 import by.sorface.gateway.properties.GatewaySessionCookieProperties
 import by.sorface.gateway.properties.SecurityWhiteList
 import by.sorface.gateway.properties.SignInProperties
 import by.sorface.gateway.properties.SignOutProperties
+import by.sorface.gateway.service.RedisReactiveOAuth2AuthorizedClientService
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.web.ServerProperties
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler
@@ -19,6 +22,7 @@ import org.springframework.context.annotation.Primary
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
+import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
@@ -56,6 +60,9 @@ class SecurityConfig(
 
     private val log = LoggerFactory.getLogger(SecurityConfig::class.java)
 
+    @Autowired
+    private lateinit var redisReactiveOidcSessionRepository: RedisReactiveOidcSessionRepository;
+
     @Bean
     fun securityFilterChain(
         http: ServerHttpSecurity,
@@ -85,6 +92,10 @@ class SecurityConfig(
                 val authenticationFailureHandler = HttpStatusJsonAuthenticationFailureHandler(HttpStatus.UNAUTHORIZED)
                 oAuth2LoginSpec.authenticationFailureHandler(authenticationFailureHandler)
             }
+            .oidcLogout { oidcLogoutSpec ->
+                oidcLogoutSpec.backChannel { }
+                oidcLogoutSpec.oidcSessionRegistry(redisReactiveOidcSessionRepository)
+            }
             .exceptionHandling { exceptionHandlingSpec: ServerHttpSecurity.ExceptionHandlingSpec ->
                 val accessDeniedHandler = HttpStatusJsonServerAccessDeniedHandler(HttpStatus.FORBIDDEN)
                 exceptionHandlingSpec.accessDeniedHandler(accessDeniedHandler)
@@ -105,6 +116,7 @@ class SecurityConfig(
 
                 oAuth2ResourceServerSpec
                     .jwt(Customizer.withDefaults())
+                    .accessDeniedHandler(accessDeniedHandler)
                     .authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint)
                     .authenticationFailureHandler(httpStatusJsonAuthenticationFailureHandler)
 
@@ -186,19 +198,4 @@ class SecurityConfig(
         )
     }
 
-//    @Bean
-//    fun authorizedClientManager(
-//        clientRegistrationRepository: ReactiveClientRegistrationRepository,
-//        authorizedClientRepository: RedisReactiveOAuth2AuthorizedClientService): ReactiveOAuth2AuthorizedClientManager {
-//        val authorizedClientProvider = ReactiveOAuth2AuthorizedClientProviderBuilder.builder()
-//            .authorizationCode()
-//            .refreshToken()
-//            .clientCredentials()
-//            .build()
-//
-//        val authorizedClientManager = DefaultReactiveOAuth2AuthorizedClientManager(
-//            clientRegistrationRepository, authorizedClientRepository)
-//        authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider)
-//        return authorizedClientManager
-//    }
 }

@@ -12,6 +12,7 @@ gateway.frontend:
   security:
     permit-all-patterns:
       - '/login/oauth2/**'
+      - '/passport/logout/**'
       - '/passport/api/csrf'
       - '/passport/api/accounts/authenticated'
 

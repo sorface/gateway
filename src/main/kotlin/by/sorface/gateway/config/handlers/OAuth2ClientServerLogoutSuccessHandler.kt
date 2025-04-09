@@ -1,6 +1,6 @@
 package by.sorface.gateway.config.handlers
 
-import by.sorface.gateway.config.RedisReactiveOAuth2AuthorizedClientService
+import by.sorface.gateway.service.RedisReactiveOAuth2AuthorizedClientService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.Authentication

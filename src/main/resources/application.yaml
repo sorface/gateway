@@ -6,6 +6,7 @@ spring:
   application:
     name: gateway
     version: 1.0.0
+
   reactor:
     context-propagation: auto
 
@@ -51,8 +52,9 @@ logging:
     root: error
     by.sorface.gateway: error
     org.springframework.cloud.gateway.filter.headers.observation: off
-    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: trace
+    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: error
     org.springframework.web.reactive: warn
+    by.sorface.gateway.config.RouteFilterConfiguration: info
 
 management:
   tracing:

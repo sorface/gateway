@@ -1,4 +1,4 @@
-package by.sorface.gateway.config
+package by.sorface.gateway.service
 
 import by.sorface.gateway.dao.nosql.model.OAuth2AuthorizedClientModel
 import org.slf4j.LoggerFactory
