@@ -1,13 +1,3 @@
-spring.session:
-  timeout: 20d
-  redis:
-    configure-action: notify_keyspace_events
-    flush-mode: on_save
-    cleanup-cron: 0 * * * * *
-    namespace: gateway:session
-    save-mode: on_set_attribute
-    repository-type: indexed
-
 gateway.session.cookie:
   domain: ${GATEWAY_SESSION_COOKIE_DOMAIN:localhost}
   name: ${GATEWAY_SESSION_COOKIE_NAME:gtw_sid}
@@ -16,3 +6,12 @@ gateway.session.cookie:
   secure: ${GATEWAY_SESSION_COOKIE_SECURE:true}
   same-site: ${GATEWAY_SESSION_COOKIE_SAME_SITE:none}
   max-age: 365d
+
+spring.session:
+  timeout: -1
+  redis:
+    namespace: gateway:session
+    configure-action: notify_keyspace_events
+    repository-type: default
+    cleanup-cron: 0 * * * * *
+    save-mode: on_set_attribute

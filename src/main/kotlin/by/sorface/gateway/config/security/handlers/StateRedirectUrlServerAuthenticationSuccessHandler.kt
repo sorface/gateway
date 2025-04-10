@@ -1,6 +1,6 @@
-package by.sorface.gateway.config.handlers
+package by.sorface.gateway.config.security.handlers
 
-import by.sorface.gateway.config.constants.WebSessionAttributes
+import by.sorface.gateway.config.security.constants.WebSessionAttributes
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.Authentication
 import org.springframework.security.web.server.DefaultServerRedirectStrategy

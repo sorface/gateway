@@ -1,4 +1,4 @@
-package by.sorface.gateway.config.handlers
+package by.sorface.gateway.config.security.handlers
 
 import org.springframework.security.core.Authentication
 import org.springframework.security.web.server.WebFilterExchange

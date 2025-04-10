@@ -1,4 +1,4 @@
-package by.sorface.gateway.config.entrypoints
+package by.sorface.gateway.config.security.entrypoints
 
 import by.sorface.gateway.utils.JsonHttpResponseUtils
 import org.springframework.http.HttpStatus

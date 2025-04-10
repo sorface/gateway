@@ -1,15 +1,11 @@
-package by.sorface.gateway.config.repository
+package by.sorface.gateway.config.security.repository
 
-import by.sorface.gateway.dao.nosql.model.OAuth2AuthorizedClientModel
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.security.oauth2.client.oidc.authentication.logout.OidcLogoutToken
 import org.springframework.security.oauth2.client.oidc.server.session.ReactiveOidcSessionRegistry
 import org.springframework.security.oauth2.client.oidc.session.OidcSessionInformation
-import org.springframework.session.ReactiveFindByIndexNameSessionRepository
-import org.springframework.session.Session
-import org.springframework.session.data.redis.ReactiveRedisIndexedSessionRepository
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -17,10 +13,7 @@ import reactor.core.publisher.Mono
 @Component
 class RedisReactiveOidcSessionRepository(
     @Qualifier("redisOidcSessionStoreClient") private val redisOidcSessionStoreClient: ReactiveRedisTemplate<String, OidcSessionInformation>,
-    @Qualifier("redisOidcSessionIndexStoreClient") private val redisOidcSessionIndexStoreClient: ReactiveRedisTemplate<String, String>,
-    private val reactiveRedisIndexedSessionRepository: ReactiveRedisIndexedSessionRepository,
-    private val findByIndexNameSessionRepository: ReactiveFindByIndexNameSessionRepository<out Session>,
-    private val oAuth2AuthorizedStoreClient: ReactiveRedisTemplate<String, OAuth2AuthorizedClientModel>
+    @Qualifier("redisOidcSessionIndexStoreClient") private val redisOidcSessionIndexStoreClient: ReactiveRedisTemplate<String, String>
 ) : ReactiveOidcSessionRegistry {
 
     private val logger = LoggerFactory.getLogger(ReactiveOidcSessionRegistry::class.java)
@@ -31,8 +24,8 @@ class RedisReactiveOidcSessionRepository(
         return redisOidcSessionStoreClient.opsForSet().add(oidcSessionKey, info)
             .flatMap {
                 val oidcIndexSessionKey = getKey(info.principal.userInfo.nickName)
-
-                redisOidcSessionIndexStoreClient.opsForSet().add(oidcIndexSessionKey, info.sessionId) }
+                redisOidcSessionIndexStoreClient.opsForSet().add(oidcIndexSessionKey, info.sessionId)
+            }
             .then()
     }
 
@@ -47,31 +40,17 @@ class RedisReactiveOidcSessionRepository(
             }
             .flatMap { session ->
                 val oidcSessionKey = getKey(session.sessionId)
-
-                redisOidcSessionStoreClient.opsForSet().delete(oidcSessionKey)
-                    .then(Mono.just(session))
+                redisOidcSessionStoreClient.opsForSet().delete(oidcSessionKey).then(Mono.just(session))
             }
             .next()
     }
 
     override fun removeSessionInformation(logoutToken: OidcLogoutToken): Flux<OidcSessionInformation> {
-        // TODO refactor the code, because RedisReactiveOidcSessionRepository must not management global session or authorized users
-        val deleteSession = findByIndexNameSessionRepository.findByPrincipalName(logoutToken.subject)
-            .map { it.keys }
-            .flatMapMany { Flux.fromIterable(it) }
-            .flatMap { id -> reactiveRedisIndexedSessionRepository.deleteById(id) }
-
         val oidcIndexSessionKey = getKey(logoutToken.subject)
 
-        val deleteOidcSessionInformation = redisOidcSessionIndexStoreClient.opsForSet().members(oidcIndexSessionKey)
+        return redisOidcSessionIndexStoreClient.opsForSet().members(oidcIndexSessionKey)
             .flatMap { getOidcSessionInformation(it.toString()) }
             .flatMap { session -> removeOidcSessionInformation(session.sessionId).then(Mono.just(session)) }
-
-        val deleteOAuth2AuthorizedClient = oAuth2AuthorizedStoreClient.opsForValue().delete("passport_${logoutToken.subject}")
-
-        return deleteSession
-            .thenMany(deleteOAuth2AuthorizedClient)
-            .thenMany(deleteOidcSessionInformation)
     }
 
     private fun getOidcSessionInformation(id: String): Flux<OidcSessionInformation> {

@@ -1,7 +1,6 @@
 server:
   port: 9000
 
-
 spring:
   application:
     name: gateway
@@ -49,12 +48,12 @@ logging:
   pattern:
     console: '%d{dd.MM.yyyy HH:mm:ss.SSS} %highlight(%-5level) [%thread] [${spring.application.name:},%X{traceId:-},%X{spanId:-}] %magenta([%file:%line]) : %msg%n'
   level:
-    root: error
-    by.sorface.gateway: error
-    org.springframework.cloud.gateway.filter.headers.observation: off
-    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: error
-    org.springframework.web.reactive: warn
-    by.sorface.gateway.config.RouteFilterConfiguration: info
+    root: trace
+#    by.sorface.gateway: error
+#    org.springframework.cloud.gateway.filter.headers.observation: off
+#    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: error
+#    org.springframework.web.reactive: warn
+#    by.sorface.gateway.config.by.sorface.gateway.config.route.RouteFilterConfiguration: info
 
 management:
   tracing:

@@ -1,6 +1,6 @@
-package by.sorface.gateway.config.resolvers
+package by.sorface.gateway.config.security.resolvers
 
-import by.sorface.gateway.config.constants.WebSessionAttributes
+import by.sorface.gateway.config.security.constants.WebSessionAttributes
 import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizationRequestResolver
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest
 import org.springframework.web.server.ServerWebExchange

@@ -1,4 +1,4 @@
-package by.sorface.gateway.config.handlers
+package by.sorface.gateway.config.security.handlers
 
 import by.sorface.gateway.service.RedisReactiveOAuth2AuthorizedClientService
 import org.slf4j.Logger

@@ -1,4 +1,4 @@
-package by.sorface.gateway.config.handlers
+package by.sorface.gateway.config.security.handlers
 
 import by.sorface.gateway.utils.JsonHttpResponseUtils
 import org.springframework.http.HttpStatus
