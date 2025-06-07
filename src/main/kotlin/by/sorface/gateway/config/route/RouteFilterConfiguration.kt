@@ -51,7 +51,7 @@ class RouteFilterConfiguration {
                     val secureRequest = exchange.request.headers.containsKey(HttpHeaders.AUTHORIZATION)
 
                     logger.info("request: [user -> $it, gateway request -> ${originalRequestAttr.firstOrNull()}, " +
-                            "target request -> ${exchange.request.uri}, secure -> ${secureRequest}]");
+                            "target request -> ${exchange.request.uri}, secure -> ${secureRequest}], token -> ${exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION)}")
 
                     exchange
                 }
