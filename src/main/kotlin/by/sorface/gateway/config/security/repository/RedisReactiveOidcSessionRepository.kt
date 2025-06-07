@@ -21,16 +21,26 @@ class RedisReactiveOidcSessionRepository(
     override fun saveSessionInformation(info: OidcSessionInformation): Mono<Void> {
         val oidcSessionKey = getKey(info.sessionId)
 
+        logger.info("save session information with key [$oidcSessionKey]")
+
         return redisOidcSessionStoreClient.opsForSet().add(oidcSessionKey, info)
             .flatMap {
                 val oidcIndexSessionKey = getKey(info.principal.userInfo.nickName)
+
+                logger.info("save session information [$oidcSessionKey] index with user [$oidcIndexSessionKey]")
+
                 redisOidcSessionIndexStoreClient.opsForSet().add(oidcIndexSessionKey, info.sessionId)
+            }
+            .doOnNext {
+                logger.info("success save session information with key [$oidcSessionKey]. result -> $it")
             }
             .then()
     }
 
     override fun removeSessionInformation(clientSessionId: String): Mono<OidcSessionInformation> {
         val oidcIndexSessionKey = getKey(clientSessionId)
+
+        logger.info("remove session information by client session id [$oidcIndexSessionKey]")
 
         return redisOidcSessionIndexStoreClient.opsForSet().members(oidcIndexSessionKey)
             .flatMap { sessionId ->
@@ -40,6 +50,9 @@ class RedisReactiveOidcSessionRepository(
             }
             .flatMap { session ->
                 val oidcSessionKey = getKey(session.sessionId)
+
+                logger.info("remove session information by session id [$oidcSessionKey]")
+
                 redisOidcSessionStoreClient.opsForSet().delete(oidcSessionKey).then(Mono.just(session))
             }
             .next()
@@ -48,9 +61,15 @@ class RedisReactiveOidcSessionRepository(
     override fun removeSessionInformation(logoutToken: OidcLogoutToken): Flux<OidcSessionInformation> {
         val oidcIndexSessionKey = getKey(logoutToken.subject)
 
+        logger.info("remove session information by logout token by subject [$oidcIndexSessionKey]")
+
         return redisOidcSessionIndexStoreClient.opsForSet().members(oidcIndexSessionKey)
             .flatMap { getOidcSessionInformation(it.toString()) }
-            .flatMap { session -> removeOidcSessionInformation(session.sessionId).then(Mono.just(session)) }
+            .flatMap { session ->
+                logger.info("remove session information by logout token with session id ${session.sessionId}")
+
+                removeOidcSessionInformation(session.sessionId).then(Mono.just(session))
+            }
     }
 
     private fun getOidcSessionInformation(id: String): Flux<OidcSessionInformation> {
