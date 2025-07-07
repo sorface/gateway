@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClient
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
+import java.time.Duration
 
 @Service
 class RedisReactiveOAuth2AuthorizedClientService(
@@ -36,15 +37,18 @@ class RedisReactiveOAuth2AuthorizedClientService(
 
                 logger.info("load authorized client by client registration id [$clientRegistrationId] and principal name [$principalName]")
 
-                reactiveAuthorizedClientRedisTemplate.opsForValue().get(key).map { it as T }
+                reactiveAuthorizedClientRedisTemplate.opsForValue()
+                    .get(key)
+                    .map { it as T }
+                    .doOnSuccess { client ->
+                        if (client == null) {
+                            logger.debug("No authorized client found for registration id [$clientRegistrationId] and principal [$principalName]")
+                        }
+                    }
+                    .doOnError { error ->
+                        logger.error("Error loading authorized client for registration id [$clientRegistrationId] and principal [$principalName]", error)
+                    }
             }
-    }
-
-    private fun dataRetrievalFailureException(clientRegistrationId: String): Throwable {
-        return DataRetrievalFailureException(
-            ("The ClientRegistration with id '" + clientRegistrationId
-                    + "' exists in the data source, however, it was not found in the ReactiveClientRegistrationRepository.")
-        )
     }
 
     override fun saveAuthorizedClient(authorizedClient: OAuth2AuthorizedClient, principal: Authentication): Mono<Void> {
@@ -58,11 +62,22 @@ class RedisReactiveOAuth2AuthorizedClientService(
             })
             .flatMap { clientRegistration ->
                 val key = buildKey(clientRegistration.registrationId, principal.name)
+                val expiresIn = Duration.between(
+                    authorizedClient.accessToken.issuedAt,
+                    authorizedClient.accessToken.expiresAt
+                )
 
                 logger.info("save authorized client with client registration id [${clientRegistration.registrationId}] and " +
-                        "principal [name -> ${principal.name}]")
+                        "principal [name -> ${principal.name}], expires in: $expiresIn")
 
-                reactiveAuthorizedClientRedisTemplate.opsForValue().set(key, authorizedClient)
+                reactiveAuthorizedClientRedisTemplate.opsForValue()
+                    .set(key, authorizedClient, expiresIn)
+                    .doOnSuccess {
+                        logger.debug("Successfully saved authorized client for registration id [${clientRegistration.registrationId}] and principal [${principal.name}]")
+                    }
+                    .doOnError { error ->
+                        logger.error("Error saving authorized client for registration id [${clientRegistration.registrationId}] and principal [${principal.name}]", error)
+                    }
             }
             .then()
     }
@@ -73,9 +88,18 @@ class RedisReactiveOAuth2AuthorizedClientService(
             .doOnNext { result ->
                 logger.info("remove authorized client with client registration id [${clientRegistrationId}] and principal [$principalName] was been with result $result")
             }
+            .doOnError { error ->
+                logger.error("Error removing authorized client for registration id [$clientRegistrationId] and principal [$principalName]", error)
+            }
             .then()
     }
 
-    private fun buildKey(clientRegistrationId: String, principalName: String): String = "${clientRegistrationId}_${principalName}"
+    private fun dataRetrievalFailureException(clientRegistrationId: String): Throwable {
+        return DataRetrievalFailureException(
+            ("The ClientRegistration with id '" + clientRegistrationId
+                    + "' exists in the data source, however, it was not found in the ReactiveClientRegistrationRepository.")
+        )
+    }
 
+    private fun buildKey(clientRegistrationId: String, principalName: String): String = "oauth2:client:${clientRegistrationId}:${principalName}"
 }
