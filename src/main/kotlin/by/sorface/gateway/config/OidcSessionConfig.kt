@@ -25,7 +25,7 @@ class OidcSessionConfig(
             override fun getSession(exchange: ServerWebExchange): Mono<WebSession> {
                 return super.getSession(exchange)
                     .doOnNext { session ->
-                        exchange.getPrincipal()
+                        exchange.getPrincipal<OAuth2AuthenticationToken>()
                             .filter { it is OAuth2AuthenticationToken }
                             .map { it as OAuth2AuthenticationToken }
                             .filter { it.principal is OidcUser }
