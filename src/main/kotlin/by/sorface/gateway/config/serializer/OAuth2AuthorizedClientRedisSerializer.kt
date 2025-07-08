@@ -5,11 +5,13 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import org.springframework.data.redis.serializer.RedisSerializer
 import org.springframework.security.jackson2.SecurityJackson2Modules
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient
+import org.springframework.stereotype.Component
 
+@Component
 class OAuth2AuthorizedClientRedisSerializer : RedisSerializer<OAuth2AuthorizedClient> {
     private val objectMapper: ObjectMapper = ObjectMapper()
         .registerKotlinModule()
-        .registerModules(SecurityJackson2Modules.getModules())
+        .registerModules(SecurityJackson2Modules.getModules(this.javaClass.classLoader))
 
     override fun serialize(client: OAuth2AuthorizedClient?): ByteArray? {
         return client?.let { objectMapper.writeValueAsBytes(it) }

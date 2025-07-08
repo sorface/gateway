@@ -10,26 +10,27 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClient
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientService
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Mono
-import java.time.Duration
 
 @Service
 class RedisReactiveOAuth2AuthorizedClientService(
-    redisConnectionFactory: ReactiveRedisConnectionFactory
+    connectionFactory: ReactiveRedisConnectionFactory,
+    oAuth2AuthorizedClientRedisSerializer: OAuth2AuthorizedClientRedisSerializer
 ) : ReactiveOAuth2AuthorizedClientService {
 
-    private val redisTemplate: ReactiveRedisTemplate<String, OAuth2AuthorizedClient>
+    private lateinit var redisTemplate: ReactiveRedisTemplate<String, OAuth2AuthorizedClient>
 
     init {
         val serializationContext = RedisSerializationContext
             .newSerializationContext<String, OAuth2AuthorizedClient>()
             .key(StringRedisSerializer())
-            .value(OAuth2AuthorizedClientRedisSerializer())
+            .value(oAuth2AuthorizedClientRedisSerializer)
+            .hashKey(StringRedisSerializer())
+            .hashValue(oAuth2AuthorizedClientRedisSerializer)
             .build()
 
-        redisTemplate = ReactiveRedisTemplate(redisConnectionFactory, serializationContext)
+        redisTemplate = ReactiveRedisTemplate(connectionFactory, serializationContext)
     }
 
-    @Suppress("UNCHECKED_CAST")
     override fun <T : OAuth2AuthorizedClient> loadAuthorizedClient(
         clientRegistrationId: String,
         principalName: String
@@ -41,11 +42,11 @@ class RedisReactiveOAuth2AuthorizedClientService(
 
     override fun saveAuthorizedClient(
         authorizedClient: OAuth2AuthorizedClient,
-        authentication: Authentication
+        principal: Authentication
     ): Mono<Void> {
-        val key = generateKey(authorizedClient.clientRegistration.registrationId, authentication.name)
+        val key = generateKey(authorizedClient.clientRegistration.registrationId, principal.name)
         return redisTemplate.opsForValue()
-            .set(key, authorizedClient, Duration.ofDays(30))
+            .set(key, authorizedClient)
             .then()
     }
 
@@ -54,10 +55,12 @@ class RedisReactiveOAuth2AuthorizedClientService(
         principalName: String
     ): Mono<Void> {
         val key = generateKey(clientRegistrationId, principalName)
-        return redisTemplate.opsForValue().delete(key).then()
+        return redisTemplate.opsForValue()
+            .delete(key)
+            .then()
     }
 
     private fun generateKey(clientRegistrationId: String, principalName: String): String {
-        return "oauth2:client:$clientRegistrationId:$principalName"
+        return "oauth2:clients:$clientRegistrationId:$principalName"
     }
 } 

@@ -15,10 +15,11 @@ import java.time.Duration
 import java.time.Instant
 
 @Service
-class RedisReactiveOidcSessionRegistry(
-    redisConnectionFactory: ReactiveRedisConnectionFactory
-) {
-    private val redisTemplate: ReactiveRedisTemplate<String, OidcSessionInformation>
+class RedisReactiveOidcSessionRegistry(redisConnectionFactory: ReactiveRedisConnectionFactory) {
+
+    private lateinit var redisTemplate: ReactiveRedisTemplate<String, OidcSessionInformation>
+    private lateinit var redisSetTemplate: ReactiveRedisTemplate<String, String>
+
     private val defaultDuration = Duration.ofDays(1)
 
     init {
@@ -26,9 +27,20 @@ class RedisReactiveOidcSessionRegistry(
             .newSerializationContext<String, OidcSessionInformation>()
             .key(StringRedisSerializer())
             .value(OidcSessionInformationRedisSerializer())
+            .hashKey(StringRedisSerializer())
+            .hashValue(OidcSessionInformationRedisSerializer())
+            .build()
+
+        val stringSerializationContext = RedisSerializationContext
+            .newSerializationContext<String, String>()
+            .key(StringRedisSerializer())
+            .value(StringRedisSerializer())
+            .hashKey(StringRedisSerializer())
+            .hashValue(StringRedisSerializer())
             .build()
 
         redisTemplate = ReactiveRedisTemplate(redisConnectionFactory, serializationContext)
+        redisSetTemplate = ReactiveRedisTemplate(redisConnectionFactory, stringSerializationContext)
     }
 
     fun saveSessionInformation(
@@ -51,7 +63,7 @@ class RedisReactiveOidcSessionRegistry(
 
         return Mono.zip(
             redisTemplate.opsForValue().set(key, sessionInfo, duration),
-            redisTemplate.opsForSet().add(principalKey, sessionId)
+            redisSetTemplate.opsForSet().add(principalKey, key)
         ).then()
     }
 
@@ -61,17 +73,16 @@ class RedisReactiveOidcSessionRegistry(
 
         return Mono.zip(
             redisTemplate.opsForValue().delete(key),
-            redisTemplate.opsForSet().remove(principalKey, sessionId)
+            redisSetTemplate.opsForSet().remove(principalKey, key)
         ).then()
     }
 
     fun findByPrincipalName(registrationId: String, principalName: String): Flux<OidcSessionInformation> {
         val principalKey = generatePrincipalKey(registrationId, principalName)
 
-        return redisTemplate.opsForSet().members(principalKey)
-            .flatMap { sessionId ->
-                val key = generateSessionKey(registrationId, principalName, sessionId)
-                redisTemplate.opsForValue().get(key)
+        return redisSetTemplate.opsForSet().members(principalKey)
+            .flatMap { sessionKey ->
+                redisTemplate.opsForValue().get(sessionKey)
             }
     }
 

@@ -1,6 +1,5 @@
 package by.sorface.gateway.model
 
-import java.io.Serializable
 import java.time.Instant
 
 data class OidcSessionInformation(
@@ -9,4 +8,4 @@ data class OidcSessionInformation(
     val registrationId: String,
     val issuedAt: Instant?,
     val expiresAt: Instant?
-) : Serializable 
+) 

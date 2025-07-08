@@ -17,13 +17,13 @@ spring:
     oauth2:
       client:
         provider:
-          spring:
-            issuer-uri: http://localhost:9000
+          passport:
+            issuer-uri: http://localhost:8080
             user-name-attribute: sub
         registration:
-          spring:
-            provider: spring
-            client-id: gateway-client
+          passport:
+            provider: passport
+            client-id: gateway
             client-secret: gateway-secret
             client-authentication-method: client_secret_basic
             authorization-grant-type: authorization_code
@@ -31,6 +31,9 @@ spring:
             scope:
               - openid
               - profile
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080
   session:
     store-type: redis
     redis:
@@ -39,10 +42,10 @@ spring:
   data:
     redis:
       host: localhost
-      port: 6379
+      port: 6380
       
 server:
-  port: 8080
+  port: 9000
   
 logging:
   level:

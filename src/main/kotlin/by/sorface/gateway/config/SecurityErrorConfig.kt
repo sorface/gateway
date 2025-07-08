@@ -14,9 +14,26 @@ import org.springframework.security.core.AuthenticationException
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
 
+/**
+ * Конфигурация обработки ошибок безопасности.
+ * 
+ * Отвечает за:
+ * - Обработку ошибок аутентификации (401)
+ * - Обработку ошибок авторизации (403)
+ * - Форматирование ответов об ошибках в JSON формате
+ */
 @Configuration
 class SecurityErrorConfig(private val objectMapper: ObjectMapper) {
 
+    /**
+     * Создает обработчик ошибок веб-запросов.
+     * 
+     * Обрабатывает:
+     * - AuthenticationException: ошибки аутентификации
+     * - AccessDeniedException: ошибки доступа
+     * 
+     * @return Обработчик ошибок с высоким приоритетом (-2)
+     */
     @Bean
     @Order(-2)
     fun errorWebExceptionHandler(): ErrorWebExceptionHandler {
@@ -29,6 +46,13 @@ class SecurityErrorConfig(private val objectMapper: ObjectMapper) {
         }
     }
 
+    /**
+     * Обрабатывает ошибки аутентификации.
+     * 
+     * @param exchange текущий веб-обмен
+     * @param ex исключение аутентификации
+     * @return Mono<Void> с отформатированным JSON ответом
+     */
     private fun handleAuthenticationError(exchange: ServerWebExchange, ex: AuthenticationException): Mono<Void> {
         val response = exchange.response
         response.statusCode = HttpStatus.UNAUTHORIZED
@@ -45,6 +69,13 @@ class SecurityErrorConfig(private val objectMapper: ObjectMapper) {
         return response.writeWith(Mono.just(buffer))
     }
 
+    /**
+     * Обрабатывает ошибки доступа.
+     * 
+     * @param exchange текущий веб-обмен
+     * @param ex исключение доступа
+     * @return Mono<Void> с отформатированным JSON ответом
+     */
     private fun handleAccessDeniedError(exchange: ServerWebExchange, ex: AccessDeniedException): Mono<Void> {
         val response = exchange.response
         response.statusCode = HttpStatus.FORBIDDEN
