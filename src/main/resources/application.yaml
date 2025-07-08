@@ -47,4 +47,5 @@ server:
 logging:
   level:
     org.springframework.security: DEBUG
-    org.springframework.web: DEBUG 
+    org.springframework.web: DEBUG
+    by.sorface.gateway.config.RouteFilterConfig: INFO 
