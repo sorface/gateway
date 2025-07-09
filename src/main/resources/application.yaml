@@ -22,6 +22,7 @@ spring:
             user-name-attribute: sub
         registration:
           passport:
+
             provider: passport
             client-id: gateway
             client-secret: gateway-secret
@@ -35,10 +36,19 @@ spring:
         jwt:
           issuer-uri: http://localhost:8080
   session:
-    store-type: redis
+    cookie:
+      name: gtw_sid
+      domain: localhost
+      path: /
+      http-only: true
+      secure: true
+      same-site: Lax
+      max-age: 7200  # 2 hours in seconds
     redis:
       namespace: spring:session
       flush-mode: immediate
+    timeout: 2h
+
   data:
     redis:
       host: localhost
