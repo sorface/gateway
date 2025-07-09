@@ -2,82 +2,130 @@ package by.sorface.gateway.config.handler
 
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.Authentication
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
 import org.springframework.security.web.server.DefaultServerRedirectStrategy
 import org.springframework.security.web.server.ServerRedirectStrategy
 import org.springframework.security.web.server.WebFilterExchange
 import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler
-import org.springframework.security.web.server.savedrequest.ServerRequestCache
-import org.springframework.web.util.UriComponentsBuilder
+import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
 import java.net.URI
 
-/**
- * Обработчик успешной OAuth2 аутентификации с поддержкой безопасного редиректа.
- *
- * Обрабатывает перенаправление пользователя после успешной OAuth2 аутентификации:
- * 1. Извлекает URL редиректа из указанного query-параметра в сохраненном запросе
- * 2. Проверяет безопасность URL редиректа (валидация хоста)
- * 3. Выполняет перенаправление на проверенный URL
- *
- * @property requestCache кэш для получения сохраненного запроса
- * @property queryParamNameRedirectLocation имя query-параметра для получения URL редиректа
- * @property allowedHosts список разрешенных хостов для редиректа
- */
 class OAuth2RedirectAuthenticationSuccessHandler(
-    private val requestCache: ServerRequestCache,
     private val queryParamNameRedirectLocation: String,
-    private val allowedHosts: Set<String> = setOf("localhost")
+    private val allowedHosts: Set<String>,
+    private val redirectStrategy: ServerRedirectStrategy = DefaultServerRedirectStrategy()
 ) : ServerAuthenticationSuccessHandler {
 
-    private val logger = LoggerFactory.getLogger(javaClass)
-    private val redirectStrategy: ServerRedirectStrategy = DefaultServerRedirectStrategy()
-    private val defaultRedirectUri = URI.create("http://localhost:9000/")
+    private val logger = LoggerFactory.getLogger(OAuth2RedirectAuthenticationSuccessHandler::class.java)
 
     override fun onAuthenticationSuccess(
         webFilterExchange: WebFilterExchange,
         authentication: Authentication
     ): Mono<Void> {
         logger.debug("Authentication success for user: {}", authentication.name)
-        
-        return requestCache.getRedirectUri(webFilterExchange.exchange)
-            .doOnNext { uri -> logger.debug("Retrieved redirect URI from cache: {}", uri) }
-            .flatMap { uri ->
-                // Извлекаем параметр redirect-location из сохраненного URI
-                val redirectLocation = UriComponentsBuilder.fromUri(uri)
-                    .build()
-                    .queryParams
-                    .getFirst(queryParamNameRedirectLocation)
+        logger.debug("Authentication type: {}", authentication.javaClass.simpleName)
+        logger.debug("Authentication details: {}", authentication.details)
 
-                if (redirectLocation == null) {
-                    logger.debug("No redirect location found, using default: {}", defaultRedirectUri)
-                    return@flatMap redirectStrategy.sendRedirect(webFilterExchange.exchange, defaultRedirectUri)
-                }
+        val exchange = webFilterExchange.exchange
 
-                // Проверяем и строим URI для редиректа
-                Mono.just(redirectLocation)
-                    .map { validateAndBuildRedirectUri(it) }
-                    .doOnNext { location -> logger.debug("Validated redirect location: {}", location) }
-                    .onErrorResume { e ->
-                        logger.warn("Invalid redirect URI: {}, falling back to default", redirectLocation, e)
-                        Mono.just(defaultRedirectUri)
-                    }
-                    .flatMap { location -> redirectStrategy.sendRedirect(webFilterExchange.exchange, location) }
+        return when (authentication) {
+            is OAuth2AuthenticationToken -> {
+                logger.debug(
+                    "Processing OAuth2 authentication - Principal: {}, Authorities: {}, Client Registration ID: {}",
+                    authentication.principal.name,
+                    authentication.authorities,
+                    authentication.authorizedClientRegistrationId
+                )
+                handleOAuth2Authentication(exchange, authentication)
             }
-            .onErrorResume { e ->
-                logger.error("Error during redirect handling", e)
-                redirectStrategy.sendRedirect(webFilterExchange.exchange, defaultRedirectUri)
+            else -> {
+                logger.warn("Unsupported authentication type: {}", authentication.javaClass.simpleName)
+                redirectStrategy.sendRedirect(exchange, URI.create("/"))
             }
+        }
     }
 
-    private fun validateAndBuildRedirectUri(redirectLocation: String): URI {
-        val uri = UriComponentsBuilder.fromUriString(redirectLocation).build().toUri()
-        
-        // Проверяем, что URI имеет допустимый хост
-        if (uri.host != null && !allowedHosts.contains(uri.host)) {
-            logger.warn("Attempted redirect to unauthorized host: {}", uri.host)
-            throw IllegalArgumentException("Redirect to unauthorized host: ${uri.host}")
+    private fun handleOAuth2Authentication(
+        exchange: ServerWebExchange,
+        authentication: OAuth2AuthenticationToken
+    ): Mono<Void> {
+        logger.debug("Handling OAuth2 authentication success")
+        logger.debug("Exchange attributes: {}", exchange.attributes.keys)
+
+        val attributes = exchange.attributes
+        val savedRequest = attributes["SPRING_SECURITY_SAVED_REQUEST"]
+        logger.debug("Saved request found: {}", savedRequest != null)
+
+        val redirectLocation = savedRequest?.let { request ->
+            when (request) {
+                is Map<*, *> -> {
+                    logger.debug("Processing saved request map")
+                    val attrs = request["attributes"] as? Map<*, *>
+                    logger.debug("Request attributes: {}", attrs?.keys)
+                    
+                    val location = attrs?.get(queryParamNameRedirectLocation) as? String
+                    logger.debug("Found redirect location from attribute '{}': {}", queryParamNameRedirectLocation, location)
+                    location
+                }
+                else -> {
+                    logger.warn("Unexpected saved request type: {}", request.javaClass.simpleName)
+                    null
+                }
+            }
         }
-        
-        return uri
+
+        val targetUrl = when {
+            redirectLocation != null && isValidRedirectUrl(redirectLocation) -> {
+                logger.debug("Using validated redirect location: {}", redirectLocation)
+                redirectLocation
+            }
+            else -> {
+                logger.debug(
+                    "Using default redirect location '/' because {}",
+                    when {
+                        redirectLocation == null -> "no redirect location found"
+                        else -> "redirect location '$redirectLocation' is not valid"
+                    }
+                )
+                "/"
+            }
+        }
+
+        logger.debug("Performing redirect to: {}", targetUrl)
+        return redirectStrategy.sendRedirect(exchange, URI.create(targetUrl))
+            .doOnSuccess { logger.debug("Redirect completed successfully") }
+            .doOnError { e -> logger.error("Error during redirect", e) }
+    }
+
+    private fun isValidRedirectUrl(url: String): Boolean {
+        return try {
+            logger.debug("Validating redirect URL: {}", url)
+            val uri = URI.create(url)
+            val host = uri.host
+            
+            if (host == null) {
+                logger.warn("Invalid redirect URL - no host present: {}", url)
+                return false
+            }
+
+            val isValid = allowedHosts.any { allowedHost ->
+                val matches = host.equals(allowedHost, ignoreCase = true) ||
+                        host.endsWith(".$allowedHost", ignoreCase = true)
+                if (matches) {
+                    logger.debug("Host '{}' matches allowed host '{}'", host, allowedHost)
+                }
+                matches
+            }
+
+            if (!isValid) {
+                logger.warn("Host '{}' is not in the allowed hosts list: {}", host, allowedHosts)
+            }
+
+            isValid
+        } catch (e: Exception) {
+            logger.warn("Invalid redirect URL format: {}", url, e)
+            false
+        }
     }
 } 

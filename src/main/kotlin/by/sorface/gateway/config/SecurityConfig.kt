@@ -2,17 +2,21 @@ package by.sorface.gateway.config
 
 import by.sorface.gateway.config.handler.OAuth2RedirectAuthenticationSuccessHandler
 import by.sorface.gateway.config.properties.SecurityProperties
+import by.sorface.gateway.config.repository.CustomOAuth2AuthorizationRequestRepository
+import by.sorface.gateway.config.resolver.CustomServerOAuth2AuthorizationRequestResolver
 import by.sorface.gateway.service.RedisReactiveOAuth2AuthorizedClientService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.io.ResourceLoader
-import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
+import org.springframework.security.oauth2.client.web.server.ServerAuthorizationRequestRepository
 import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository
+import org.springframework.security.oauth2.client.web.server.WebSessionOAuth2ServerAuthorizationRequestRepository
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.oauth2.core.OAuth2Error
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoders
 import org.springframework.security.oauth2.server.resource.web.server.authentication.ServerBearerTokenAuthenticationConverter
 import org.springframework.security.web.server.SecurityWebFilterChain
@@ -21,9 +25,6 @@ import org.springframework.security.web.server.authentication.HttpStatusServerEn
 import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler
 import org.springframework.security.web.server.authorization.HttpStatusServerAccessDeniedHandler
 import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler
-import org.springframework.security.web.server.savedrequest.ServerRequestCache
-import org.springframework.security.web.server.savedrequest.WebSessionServerRequestCache
-import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher
 import reactor.core.publisher.Mono
 
 /**
@@ -38,7 +39,8 @@ import reactor.core.publisher.Mono
 @Configuration
 @EnableWebFluxSecurity
 class SecurityConfig(
-    private val securityProperties: SecurityProperties
+    private val securityProperties: SecurityProperties,
+    private val authorizationRequestRepository: CustomOAuth2AuthorizationRequestRepository
 ) {
 
     /**
@@ -69,6 +71,7 @@ class SecurityConfig(
                 oauth2Spec.authenticationSuccessHandler(authenticationSuccessHandler())
                 oauth2Spec.authorizedClientRepository(authorizedClientRepository)
                 oauth2Spec.authorizedClientService(authorizedClientService)
+                oauth2Spec.authorizationRequestRepository(authorizationRequestRepository)
             }
             .oauth2Client {
                 it.authorizedClientRepository(authorizedClientRepository)
@@ -102,9 +105,6 @@ class SecurityConfig(
                     }
                     .accessDeniedHandler(accessDeniedHandler())
             }
-            .requestCache { requestCacheSpec ->
-                requestCacheSpec.requestCache(requestCache())
-            }
             .exceptionHandling { exceptionHandlingSpec ->
                 exceptionHandlingSpec
                     .authenticationEntryPoint(authenticationEntryPoint())
@@ -132,23 +132,6 @@ class SecurityConfig(
     }
 
     /**
-     * Создает кэш для сохранения исходных запросов.
-     *
-     * Используется для:
-     * - Сохранения URL, с которого пользователь был перенаправлен на аутентификацию
-     * - Восстановления исходного запроса после успешной аутентификации
-     */
-    @Bean
-    fun requestCache(): ServerRequestCache {
-        val webExchangeMatcher = PathPatternParserServerWebExchangeMatcher("/oauth2/**", HttpMethod.GET)
-
-        return WebSessionServerRequestCache()
-            .apply {
-                setSaveRequestMatcher(webExchangeMatcher)
-            }
-    }
-
-    /**
      * Создает обработчик успешной аутентификации.
      *
      * После успешной аутентификации:
@@ -159,7 +142,6 @@ class SecurityConfig(
     @Bean
     fun authenticationSuccessHandler(): ServerAuthenticationSuccessHandler {
         return OAuth2RedirectAuthenticationSuccessHandler(
-            requestCache = requestCache(),
             queryParamNameRedirectLocation = securityProperties.queryParamNameRedirectLocation,
             allowedHosts = securityProperties.allowedRedirectHosts
         )

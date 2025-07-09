@@ -1,42 +1,54 @@
 package by.sorface.gateway.config.handler
 
-import by.sorface.gateway.config.properties.SecurityProperties
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.mock.http.server.reactive.MockServerHttpRequest
-import org.springframework.mock.web.server.MockServerWebExchange
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
+import org.springframework.http.HttpStatus
+import org.springframework.mock.web.reactive.function.server.MockServerRequest
 import org.springframework.security.core.Authentication
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User
-import org.springframework.security.web.server.WebFilterExchange
-import org.springframework.test.context.ActiveProfiles
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
+import org.springframework.security.oauth2.core.user.OAuth2User
+import org.springframework.web.server.ServerWebExchange
+import org.springframework.web.server.WebFilterChain
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.net.URI
+import org.assertj.core.api.Assertions.assertThat
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest
+import org.springframework.mock.web.server.MockServerWebExchange
+import org.springframework.security.web.server.WebFilterExchange
+import org.springframework.web.server.WebSession
+import java.util.HashMap
 
-@SpringBootTest
-@ActiveProfiles("test")
 class OAuth2RedirectAuthenticationSuccessHandlerIntegrationTest {
 
-    @Autowired
-    private lateinit var securityProperties: SecurityProperties
+    private val handler = OAuth2RedirectAuthenticationSuccessHandler(
+        queryParamNameRedirectLocation = "redirect-location",
+        allowedHosts = setOf("localhost", "example.com")
+    )
 
     @Test
-    fun `should successfully redirect to allowed host after authentication`() {
+    fun `should redirect to saved location when valid`() {
         // Given
         val redirectLocation = "http://localhost:3000/dashboard"
-        val handler = OAuth2RedirectAuthenticationSuccessHandler(
-            requestCache = TestServerRequestCache(redirectLocation, securityProperties.queryParamNameRedirectLocation),
-            queryParamNameRedirectLocation = securityProperties.queryParamNameRedirectLocation,
-            allowedHosts = setOf("localhost", "localhost:3000")
+        val exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/").build())
+        
+        // Mock saved request attributes
+        val savedRequest = mapOf(
+            "attributes" to mapOf(
+                "redirect-location" to redirectLocation
+            )
         )
+        exchange.attributes["SPRING_SECURITY_SAVED_REQUEST"] = savedRequest
 
-        val exchange = MockServerWebExchange.from(
-            MockServerHttpRequest.get("/login/oauth2/code/passport").build()
-        )
+        val authentication = mock<OAuth2AuthenticationToken>()
+        val principal = mock<OAuth2User>()
+        whenever(authentication.name).thenReturn("test-user")
+        whenever(authentication.principal).thenReturn(principal)
+        whenever(principal.attributes).thenReturn(mapOf("sub" to "test-user"))
 
-        val webFilterExchange = WebFilterExchange(exchange, { Mono.empty() })
-        val authentication = createTestAuthentication()
+        val webFilterExchange = WebFilterExchange(exchange, mock())
 
         // When
         val result = handler.onAuthenticationSuccess(webFilterExchange, authentication)
@@ -45,74 +57,63 @@ class OAuth2RedirectAuthenticationSuccessHandlerIntegrationTest {
         StepVerifier.create(result)
             .verifyComplete()
 
-        val location = exchange.response.headers.location
-        assert(location?.toString() == redirectLocation) {
-            "Expected location to be $redirectLocation but was ${location?.toString()}"
-        }
+        assertThat(exchange.response.statusCode).isEqualTo(HttpStatus.FOUND)
+        assertThat(exchange.response.headers.location).isEqualTo(URI.create(redirectLocation))
     }
 
     @Test
-    fun `should reject redirect to unauthorized host`() {
+    fun `should redirect to default location when no saved request`() {
         // Given
-        val unauthorizedRedirectLocation = "http://unauthorized-host.com/dashboard"
-        val handler = OAuth2RedirectAuthenticationSuccessHandler(
-            requestCache = TestServerRequestCache(unauthorizedRedirectLocation, securityProperties.queryParamNameRedirectLocation),
-            queryParamNameRedirectLocation = securityProperties.queryParamNameRedirectLocation,
-            allowedHosts = setOf("localhost", "localhost:3000")
-        )
+        val exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/").build())
+        val authentication = mock<OAuth2AuthenticationToken>()
+        val principal = mock<OAuth2User>()
+        whenever(authentication.name).thenReturn("test-user")
+        whenever(authentication.principal).thenReturn(principal)
+        whenever(principal.attributes).thenReturn(mapOf("sub" to "test-user"))
 
-        val exchange = MockServerWebExchange.from(
-            MockServerHttpRequest.get("/login/oauth2/code/passport").build()
-        )
+        val webFilterExchange = WebFilterExchange(exchange, mock())
 
-        val webFilterExchange = WebFilterExchange(exchange, { Mono.empty() })
-        val authentication = createTestAuthentication()
+        // When
+        val result = handler.onAuthenticationSuccess(webFilterExchange, authentication)
 
-        // When & Then
-        StepVerifier.create(handler.onAuthenticationSuccess(webFilterExchange, authentication))
-            .expectError(IllegalArgumentException::class.java)
-            .verify()
+        // Then
+        StepVerifier.create(result)
+            .verifyComplete()
+
+        assertThat(exchange.response.statusCode).isEqualTo(HttpStatus.FOUND)
+        assertThat(exchange.response.headers.location).isEqualTo(URI.create("/"))
     }
 
-    private fun createTestAuthentication(): Authentication {
-        val attributes = mapOf(
-            "sub" to "test-user",
-            "name" to "Test User",
-            "email" to "test@example.com"
+    @Test
+    fun `should redirect to default location when redirect location is invalid`() {
+        // Given
+        val redirectLocation = "http://malicious.com/dashboard"
+        val exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/").build())
+        
+        // Mock saved request attributes
+        val savedRequest = mapOf(
+            "attributes" to mapOf(
+                "redirect-location" to redirectLocation
+            )
         )
-        return TestOAuth2Authentication(
-            DefaultOAuth2User(emptyList(), attributes, "sub")
-        )
-    }
-}
+        exchange.attributes["SPRING_SECURITY_SAVED_REQUEST"] = savedRequest
 
-class TestServerRequestCache(
-    private val redirectLocation: String,
-    private val paramName: String
-) : org.springframework.security.web.server.savedrequest.ServerRequestCache {
-    override fun saveRequest(exchange: org.springframework.web.server.ServerWebExchange): Mono<Void> {
-        return Mono.empty()
-    }
+        val authentication = mock<OAuth2AuthenticationToken>()
+        val principal = mock<OAuth2User>()
+        whenever(authentication.name).thenReturn("test-user")
+        whenever(authentication.principal).thenReturn(principal)
+        whenever(principal.attributes).thenReturn(mapOf("sub" to "test-user"))
 
-    override fun getRedirectUri(exchange: org.springframework.web.server.ServerWebExchange): Mono<URI> {
-        return Mono.just(
-            URI.create("/?$paramName=$redirectLocation")
-        )
-    }
+        val webFilterExchange = WebFilterExchange(exchange, mock())
 
-    override fun removeMatchingRequest(exchange: org.springframework.web.server.ServerWebExchange): Mono<org.springframework.http.server.reactive.ServerHttpRequest> {
-        return Mono.empty()
-    }
-}
+        // When
+        val result = handler.onAuthenticationSuccess(webFilterExchange, authentication)
 
-class TestOAuth2Authentication(
-    private val principal: DefaultOAuth2User
-) : Authentication {
-    override fun getName(): String = principal.name
-    override fun getAuthorities() = principal.authorities
-    override fun getCredentials() = null
-    override fun getDetails() = null
-    override fun getPrincipal() = principal
-    override fun isAuthenticated() = true
-    override fun setAuthenticated(isAuthenticated: Boolean) {}
+        // Then
+        StepVerifier.create(result)
+            .verifyComplete()
+
+        assertThat(exchange.response.statusCode).isEqualTo(HttpStatus.FOUND)
+        assertThat(exchange.response.headers.location).isEqualTo(URI.create("/"))
+    }
 } 

@@ -3,6 +3,7 @@ package by.sorface.gateway.config
 import by.sorface.gateway.config.properties.SessionProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.security.oauth2.client.web.server.WebSessionOAuth2ServerAuthorizationRequestRepository
 import org.springframework.web.server.session.CookieWebSessionIdResolver
 import org.springframework.web.server.session.WebSessionIdResolver
 
@@ -25,4 +26,5 @@ class WebSessionConfig(private val sessionProperties: SessionProperties) {
         }
         return resolver
     }
+
 } 

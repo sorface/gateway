@@ -52,19 +52,54 @@ spring:
     redis:
       namespace: spring:session
       flush-mode: immediate
+      repository-type: indexed
     timeout: 2h
-
   data:
     redis:
-      host: localhost
-      port: 6380
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:default}
+      password: ${REDIS_PASSWORD:testpassword}
+      connect-timeout: 5s
+      client-type: lettuce
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: -1ms
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c
+    baggage:
+      enabled: true
+      correlation:
+        enabled: true
+    brave:
+      enabled: false
+    otel:
+      enabled: true
+      exporter:
+        otlp:
+          enabled: true
+  observations:
+    enabled: true
       
 server:
   port: 9000
   
 logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
   level:
-#    org.springframework.security: DEBUG
-#    org.springframework.web: DEBUG
-#    by.sorface.gateway.config.RouteFilterConfig: INFO
-    root: trace
+    root: INFO
+    org.springframework.cloud.gateway: TRACE
+    org.springframework.web.reactive: TRACE
+    by.sorface.gateway: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.session: DEBUG
