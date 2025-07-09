@@ -1,25 +1,9 @@
 spring:
-  application:
-    name: gateway
-  cloud:
-    gateway:
-      default-filters:
-        - TokenRelay
-      routes:
-        - id: resource-server
-          uri: http://localhost:8081
-          predicates:
-            - Path=/api/**
-          filters:
-            - RemoveRequestHeader=Cookie
-            - RemoveRequestHeader=Set-Cookie
   security:
     oauth2:
       allowed-redirect-hosts:
         - localhost
         - localhost:3000
-        - localhost:9020
-        - localhost:9030
       query-param-name-redirect-location: redirect-location
       client:
         provider:
@@ -29,8 +13,8 @@ spring:
         registration:
           passport:
             provider: passport
-            client-id: gateway
-            client-secret: gateway-secret
+            client-id: test-client
+            client-secret: test-secret
             client-authentication-method: client_secret_basic
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
@@ -40,30 +24,19 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8080
+
   session:
-    cookie:
-      name: gtw_sid
-      domain: localhost
-      path: /
-      http-only: true
-      secure: true
-      same-site: Lax
-      max-age: 7200
-    redis:
-      namespace: spring:session
-      flush-mode: immediate
-    timeout: 2h
+    store-type: none
 
   data:
     redis:
       host: localhost
       port: 6380
-      
+
 server:
-  port: 9000
-  
+  port: 0
+
 logging:
   level:
     org.springframework.security: DEBUG
-    org.springframework.web: DEBUG
-    by.sorface.gateway.config.RouteFilterConfig: INFO 
+    org.springframework.web: DEBUG 

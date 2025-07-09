@@ -152,12 +152,13 @@ class SecurityConfig(
      * После успешной аутентификации:
      * - Проверяет наличие параметра redirect-location в сохраненном запросе
      * - Проверяет, что хост редиректа находится в списке разрешенных
-     * - Перенаправляет пользователя на указанный URL или на URL по умолчанию
+     * - Перенаправляет пользователя на указанный URL
      */
     @Bean
     fun authenticationSuccessHandler(): ServerAuthenticationSuccessHandler {
         return OAuth2RedirectAuthenticationSuccessHandler(
             requestCache = requestCache(),
+            queryParamNameRedirectLocation = securityProperties.queryParamNameRedirectLocation,
             allowedHosts = securityProperties.allowedRedirectHosts
         )
     }

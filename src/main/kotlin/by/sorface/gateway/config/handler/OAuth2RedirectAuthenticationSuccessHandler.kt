@@ -15,17 +15,17 @@ import java.net.URI
  * Обработчик успешной OAuth2 аутентификации с поддержкой безопасного редиректа.
  *
  * Обрабатывает перенаправление пользователя после успешной OAuth2 аутентификации:
- * 1. Извлекает URL редиректа из параметра redirect-location в сохраненном запросе
+ * 1. Извлекает URL редиректа из указанного query-параметра в сохраненном запросе
  * 2. Проверяет безопасность URL редиректа (валидация хоста)
- * 3. Выполняет перенаправление на проверенный URL или URL по умолчанию
+ * 3. Выполняет перенаправление на проверенный URL
  *
  * @property requestCache кэш для получения сохраненного запроса
- * @property defaultRedirectLocation URL по умолчанию для редиректа
+ * @property queryParamNameRedirectLocation имя query-параметра для получения URL редиректа
  * @property allowedHosts список разрешенных хостов для редиректа
  */
 class OAuth2RedirectAuthenticationSuccessHandler(
     private val requestCache: ServerRequestCache,
-    private val defaultRedirectLocation: String = "/",
+    private val queryParamNameRedirectLocation: String,
     private val allowedHosts: Set<String> = setOf("localhost")
 ) : ServerAuthenticationSuccessHandler {
 
@@ -37,21 +37,19 @@ class OAuth2RedirectAuthenticationSuccessHandler(
         authentication: Authentication
     ): Mono<Void> {
         return requestCache.getRedirectUri(webFilterExchange.exchange)
-            .map { uri ->
+            .flatMap { uri ->
                 // Извлекаем параметр redirect-location из сохраненного URI
                 val redirectLocation = UriComponentsBuilder.fromUri(uri)
                     .build()
                     .queryParams
-                    .getFirst("redirect-location") ?: defaultRedirectLocation
+                    .getFirst(queryParamNameRedirectLocation)
+                    ?: return@flatMap Mono.error(IllegalStateException("Redirect location is required"))
 
                 // Проверяем и строим URI для редиректа
-                validateAndBuildRedirectUri(redirectLocation)
+                Mono.just(redirectLocation)
+                    .map { validateAndBuildRedirectUri(it) }
+                    .onErrorMap { e -> IllegalArgumentException("Invalid redirect URI: $redirectLocation", e) }
             }
-            .defaultIfEmpty(
-                UriComponentsBuilder.fromUriString(defaultRedirectLocation)
-                    .build()
-                    .toUri()
-            )
             .flatMap { location ->
                 logger.debug("Redirecting after successful authentication to: {}", location)
                 redirectStrategy.sendRedirect(webFilterExchange.exchange, location)
@@ -59,19 +57,14 @@ class OAuth2RedirectAuthenticationSuccessHandler(
     }
 
     private fun validateAndBuildRedirectUri(redirectLocation: String): URI {
-        return try {
-            val uri = UriComponentsBuilder.fromUriString(redirectLocation).build().toUri()
-            
-            // Проверяем, что URI имеет допустимый хост
-            if (uri.host != null && !allowedHosts.contains(uri.host)) {
-                logger.warn("Attempted redirect to unauthorized host: {}", uri.host)
-                UriComponentsBuilder.fromUriString(defaultRedirectLocation).build().toUri()
-            } else {
-                uri
-            }
-        } catch (e: Exception) {
-            logger.warn("Invalid redirect URI: {}", redirectLocation, e)
-            UriComponentsBuilder.fromUriString(defaultRedirectLocation).build().toUri()
+        val uri = UriComponentsBuilder.fromUriString(redirectLocation).build().toUri()
+        
+        // Проверяем, что URI имеет допустимый хост
+        if (uri.host != null && !allowedHosts.contains(uri.host)) {
+            logger.warn("Attempted redirect to unauthorized host: {}", uri.host)
+            throw IllegalArgumentException("Redirect to unauthorized host: ${uri.host}")
         }
+        
+        return uri
     }
 } 
