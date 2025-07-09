@@ -43,7 +43,7 @@ spring:
       http-only: true
       secure: true
       same-site: Lax
-      max-age: 7200  # 2 hours in seconds
+      max-age: 7200
     redis:
       namespace: spring:session
       flush-mode: immediate
