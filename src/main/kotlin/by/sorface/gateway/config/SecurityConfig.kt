@@ -61,6 +61,7 @@ class SecurityConfig(
             .csrf { it.disable() }
             .authorizeExchange {
                 it.pathMatchers("/actuator/**").permitAll()
+                    .pathMatchers("/api/v1/sessions").permitAll()
                     .anyExchange().authenticated()
             }
             .oauth2Login { oauth2Spec ->
