@@ -15,6 +15,11 @@ spring:
             - RemoveRequestHeader=Set-Cookie
   security:
     oauth2:
+      allowed-redirect-hosts:
+        - localhost
+        - localhost:3000
+        - localhost:9020
+        - localhost:9030
       client:
         provider:
           passport:
@@ -22,7 +27,6 @@ spring:
             user-name-attribute: sub
         registration:
           passport:
-
             provider: passport
             client-id: gateway
             client-secret: gateway-secret

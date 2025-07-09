@@ -1,5 +1,7 @@
 package by.sorface.gateway.config
 
+import by.sorface.gateway.config.handler.OAuth2RedirectAuthenticationSuccessHandler
+import by.sorface.gateway.config.properties.SecurityProperties
 import by.sorface.gateway.service.RedisReactiveOAuth2AuthorizedClientService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -16,7 +18,6 @@ import org.springframework.security.oauth2.server.resource.web.server.authentica
 import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint
 import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
-import org.springframework.security.web.server.authentication.RedirectServerAuthenticationSuccessHandler
 import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler
 import org.springframework.security.web.server.authorization.HttpStatusServerAccessDeniedHandler
 import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler
@@ -36,7 +37,9 @@ import reactor.core.publisher.Mono
  */
 @Configuration
 @EnableWebFluxSecurity
-class SecurityConfig {
+class SecurityConfig(
+    private val securityProperties: SecurityProperties
+) {
 
     /**
      * Создает основную цепочку фильтров безопасности.
@@ -147,14 +150,15 @@ class SecurityConfig {
      * Создает обработчик успешной аутентификации.
      *
      * После успешной аутентификации:
-     * - Проверяет наличие сохраненного запроса
-     * - Перенаправляет пользователя на исходный URL
-     * - Если исходный URL отсутствует, использует URL по умолчанию
+     * - Проверяет наличие параметра redirect-location в сохраненном запросе
+     * - Проверяет, что хост редиректа находится в списке разрешенных
+     * - Перенаправляет пользователя на указанный URL или на URL по умолчанию
      */
     @Bean
     fun authenticationSuccessHandler(): ServerAuthenticationSuccessHandler {
-        val redirectHandler = RedirectServerAuthenticationSuccessHandler()
-        redirectHandler.setRequestCache(requestCache())
-        return redirectHandler
+        return OAuth2RedirectAuthenticationSuccessHandler(
+            requestCache = requestCache(),
+            allowedHosts = securityProperties.allowedRedirectHosts
+        )
     }
 } 
