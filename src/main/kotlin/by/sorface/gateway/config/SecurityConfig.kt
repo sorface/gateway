@@ -62,6 +62,7 @@ class SecurityConfig(
             .authorizeExchange {
                 it.pathMatchers("/actuator/**").permitAll()
                     .pathMatchers("/api/v1/sessions").permitAll()
+                    .pathMatchers("/api/v1/oidc/sessions").authenticated()
                     .anyExchange().authenticated()
             }
             .oauth2Login { oauth2Spec ->
