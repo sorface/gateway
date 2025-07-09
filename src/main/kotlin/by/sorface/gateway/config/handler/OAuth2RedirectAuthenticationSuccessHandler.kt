@@ -31,28 +31,41 @@ class OAuth2RedirectAuthenticationSuccessHandler(
 
     private val logger = LoggerFactory.getLogger(javaClass)
     private val redirectStrategy: ServerRedirectStrategy = DefaultServerRedirectStrategy()
+    private val defaultRedirectUri = URI.create("http://localhost:9000/")
 
     override fun onAuthenticationSuccess(
         webFilterExchange: WebFilterExchange,
         authentication: Authentication
     ): Mono<Void> {
+        logger.debug("Authentication success for user: {}", authentication.name)
+        
         return requestCache.getRedirectUri(webFilterExchange.exchange)
+            .doOnNext { uri -> logger.debug("Retrieved redirect URI from cache: {}", uri) }
             .flatMap { uri ->
                 // Извлекаем параметр redirect-location из сохраненного URI
                 val redirectLocation = UriComponentsBuilder.fromUri(uri)
                     .build()
                     .queryParams
                     .getFirst(queryParamNameRedirectLocation)
-                    ?: return@flatMap Mono.error(IllegalStateException("Redirect location is required"))
+
+                if (redirectLocation == null) {
+                    logger.debug("No redirect location found, using default: {}", defaultRedirectUri)
+                    return@flatMap redirectStrategy.sendRedirect(webFilterExchange.exchange, defaultRedirectUri)
+                }
 
                 // Проверяем и строим URI для редиректа
                 Mono.just(redirectLocation)
                     .map { validateAndBuildRedirectUri(it) }
-                    .onErrorMap { e -> IllegalArgumentException("Invalid redirect URI: $redirectLocation", e) }
+                    .doOnNext { location -> logger.debug("Validated redirect location: {}", location) }
+                    .onErrorResume { e ->
+                        logger.warn("Invalid redirect URI: {}, falling back to default", redirectLocation, e)
+                        Mono.just(defaultRedirectUri)
+                    }
+                    .flatMap { location -> redirectStrategy.sendRedirect(webFilterExchange.exchange, location) }
             }
-            .flatMap { location ->
-                logger.debug("Redirecting after successful authentication to: {}", location)
-                redirectStrategy.sendRedirect(webFilterExchange.exchange, location)
+            .onErrorResume { e ->
+                logger.error("Error during redirect handling", e)
+                redirectStrategy.sendRedirect(webFilterExchange.exchange, defaultRedirectUri)
             }
     }
 

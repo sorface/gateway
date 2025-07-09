@@ -1,9 +1,12 @@
 package by.sorface.gateway.config.serializer
 
-import by.sorface.gateway.model.OidcSessionInformation
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.springframework.security.oauth2.client.oidc.session.OidcSessionInformation
+import org.springframework.security.oauth2.core.oidc.OidcIdToken
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser
 import java.time.Instant
+import java.util.*
 
 class OidcSessionInformationRedisSerializerTest {
 
@@ -13,13 +16,13 @@ class OidcSessionInformationRedisSerializerTest {
     fun `test serialization and deserialization`() {
         // Given
         val now = Instant.now()
-        val sessionInfo = OidcSessionInformation(
-            principalName = "testUser",
-            sessionId = "session123",
-            registrationId = "testRegistration",
-            issuedAt = now,
-            expiresAt = now.plusSeconds(3600)
+        val idToken = createIdToken(now)
+        val user = DefaultOidcUser(emptyList(), idToken)
+        val authorities = mapOf(
+            "registrationId" to "testRegistration",
+            "principalName" to "testUser"
         )
+        val sessionInfo = OidcSessionInformation("session123", authorities, user)
 
         // When
         val serialized = serializer.serialize(sessionInfo)
@@ -27,11 +30,9 @@ class OidcSessionInformationRedisSerializerTest {
 
         // Then
         assertThat(deserialized).isNotNull
-        assertThat(deserialized!!.principalName).isEqualTo(sessionInfo.principalName)
-        assertThat(deserialized.sessionId).isEqualTo(sessionInfo.sessionId)
-        assertThat(deserialized.registrationId).isEqualTo(sessionInfo.registrationId)
-        assertThat(deserialized.issuedAt).isEqualTo(sessionInfo.issuedAt)
-        assertThat(deserialized.expiresAt).isEqualTo(sessionInfo.expiresAt)
+        assertThat(deserialized!!.sessionId).isEqualTo(sessionInfo.sessionId)
+        assertThat(deserialized.authorities).isEqualTo(sessionInfo.authorities)
+        assertThat(deserialized.principal.attributes).isEqualTo(sessionInfo.principal.attributes)
     }
 
     @Test
@@ -46,15 +47,16 @@ class OidcSessionInformationRedisSerializerTest {
     }
 
     @Test
-    fun `test session with null timestamps`() {
+    fun `test session with minimal data`() {
         // Given
-        val sessionInfo = OidcSessionInformation(
-            principalName = "testUser",
-            sessionId = "session123",
-            registrationId = "testRegistration",
-            issuedAt = null,
-            expiresAt = null
+        val now = Instant.now()
+        val idToken = createIdToken(now)
+        val user = DefaultOidcUser(emptyList(), idToken)
+        val authorities = mapOf(
+            "registrationId" to "testRegistration",
+            "principalName" to "testUser"
         )
+        val sessionInfo = OidcSessionInformation("session123", authorities, user)
 
         // When
         val serialized = serializer.serialize(sessionInfo)
@@ -62,10 +64,18 @@ class OidcSessionInformationRedisSerializerTest {
 
         // Then
         assertThat(deserialized).isNotNull
-        assertThat(deserialized!!.principalName).isEqualTo(sessionInfo.principalName)
-        assertThat(deserialized.sessionId).isEqualTo(sessionInfo.sessionId)
-        assertThat(deserialized.registrationId).isEqualTo(sessionInfo.registrationId)
-        assertThat(deserialized.issuedAt).isNull()
-        assertThat(deserialized.expiresAt).isNull()
+        assertThat(deserialized!!.sessionId).isEqualTo(sessionInfo.sessionId)
+        assertThat(deserialized.authorities).isEqualTo(sessionInfo.authorities)
+        assertThat(deserialized.principal.attributes).isEqualTo(sessionInfo.principal.attributes)
+    }
+
+    private fun createIdToken(now: Instant): OidcIdToken {
+        val claims = mapOf(
+            "sub" to "testUser",
+            "iat" to now.epochSecond,
+            "exp" to now.plusSeconds(3600).epochSecond,
+            "iss" to "https://test-issuer.com"
+        )
+        return OidcIdToken("token-" + UUID.randomUUID(), now, now.plusSeconds(3600), claims)
     }
 } 

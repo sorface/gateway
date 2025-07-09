@@ -2,10 +2,8 @@ package by.sorface.gateway.model
 
 import java.time.Instant
 
-data class OidcSessionInformation(
-    val principalName: String,
+data class OidcSessionData(
     val sessionId: String,
     val registrationId: String,
-    val issuedAt: Instant?,
-    val expiresAt: Instant?
+    val principalName: String
 ) 

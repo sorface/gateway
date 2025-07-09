@@ -12,6 +12,9 @@ import org.springframework.web.server.ResponseStatusException
 import reactor.core.publisher.Flux
 import java.time.Instant
 
+private const val REGISTRATION_ID_KEY_NAME = "registrationId"
+private const val PRINCIPAL_NAME_KEY_NAME = "principalName"
+
 /**
  * Контроллер для работы с OIDC сессиями.
  */
@@ -30,21 +33,15 @@ class OidcSessionController(
      * @throws ResponseStatusException если пользователь не аутентифицирован
      */
     @GetMapping
-    fun getCurrentUserSessions(
-        authentication: Authentication?,
-        @RequestParam registrationId: String
-    ): Flux<OidcSessionResponse> {
-        val principalName = authentication?.name
-            ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated")
+    fun getCurrentUserSessions(authentication: Authentication?, @RequestParam registrationId: String): Flux<OidcSessionResponse> {
+        val principalName = authentication?.name ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated")
 
-        return sessionRegistry.findByPrincipalName(principalName, registrationId)
+        return sessionRegistry.findByPrincipalName(registrationId, principalName)
             .map { session ->
                 OidcSessionResponse(
-                    registrationId = session.registrationId,
-                    principalName = session.principalName,
                     sessionId = session.sessionId,
-                    issuedAt = session.issuedAt ?: Instant.now(),
-                    expiresAt = session.expiresAt ?: Instant.now().plusSeconds(3600)
+                    registrationId = session.authorities[REGISTRATION_ID_KEY_NAME] ?: registrationId,
+                    principalName = session.authorities[PRINCIPAL_NAME_KEY_NAME] ?: principalName,
                 )
             }
     }
