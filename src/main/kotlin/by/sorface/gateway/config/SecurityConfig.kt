@@ -1,174 +1,157 @@
 package by.sorface.gateway.config
 
-import by.sorface.gateway.config.security.entrypoints.HttpStatusJsonServerAuthenticationEntryPoint
-import by.sorface.gateway.config.security.handlers.*
-import by.sorface.gateway.config.security.repository.RedisReactiveOidcSessionRepository
-import by.sorface.gateway.config.security.resolvers.SpaServerOAuth2AuthorizationRequestResolver
-import by.sorface.gateway.properties.GatewaySessionCookieProperties
-import by.sorface.gateway.properties.SecurityWhiteList
-import by.sorface.gateway.properties.SignInProperties
-import by.sorface.gateway.properties.SignOutProperties
+import by.sorface.gateway.config.handler.OAuth2RedirectAuthenticationSuccessHandler
+import by.sorface.gateway.config.properties.SecurityProperties
+import by.sorface.gateway.config.repository.CustomOAuth2AuthorizationRequestRepository
+import by.sorface.gateway.config.resolver.CustomServerOAuth2AuthorizationRequestResolver
 import by.sorface.gateway.service.RedisReactiveOAuth2AuthorizedClientService
-import com.fasterxml.jackson.databind.ObjectMapper
-import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
-import org.springframework.boot.autoconfigure.web.ServerProperties
-import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler
-import org.springframework.cloud.gateway.config.GlobalCorsProperties
+import by.sorface.gateway.service.RedisReactiveOidcSessionRegistry
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Primary
-import org.springframework.http.HttpMethod
+import org.springframework.core.io.ResourceLoader
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseCookie
-import org.springframework.security.config.Customizer
-import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
-import org.springframework.security.core.Authentication
-import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcClientInitiatedServerLogoutSuccessHandler
-import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository
-import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers
-import org.springframework.security.oauth2.client.web.server.DefaultServerOAuth2AuthorizationRequestResolver
+import org.springframework.security.oauth2.client.web.server.ServerAuthorizationRequestRepository
+import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository
+import org.springframework.security.oauth2.client.web.server.WebSessionOAuth2ServerAuthorizationRequestRepository
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException
+import org.springframework.security.oauth2.core.OAuth2Error
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoders
+import org.springframework.security.oauth2.server.resource.web.server.authentication.ServerBearerTokenAuthenticationConverter
 import org.springframework.security.web.server.SecurityWebFilterChain
-import org.springframework.security.web.server.WebFilterExchange
-import org.springframework.security.web.server.authentication.logout.DelegatingServerLogoutHandler
-import org.springframework.security.web.server.authentication.logout.SecurityContextServerLogoutHandler
-import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler
-import org.springframework.security.web.server.authentication.logout.WebSessionServerLogoutHandler
-import org.springframework.session.ReactiveSessionRepository
-import org.springframework.session.Session
-import org.springframework.web.cors.CorsConfiguration
-import org.springframework.web.cors.reactive.CorsConfigurationSource
-import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource
-import org.springframework.web.reactive.config.EnableWebFlux
-import org.springframework.web.server.session.CookieWebSessionIdResolver
-import org.springframework.web.server.session.WebSessionIdResolver
-import java.net.URI
+import org.springframework.security.web.server.ServerAuthenticationEntryPoint
+import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
+import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler
+import org.springframework.security.web.server.authorization.HttpStatusServerAccessDeniedHandler
+import org.springframework.security.web.server.authorization.ServerAccessDeniedHandler
+import reactor.core.publisher.Mono
 
-@EnableWebFlux
-@EnableWebFluxSecurity
-@EnableReactiveMethodSecurity
+/**
+ * Конфигурация безопасности для Gateway API.
+ *
+ * Отвечает за:
+ * - Настройку OAuth2 аутентификации
+ * - Управление правами доступа к эндпоинтам
+ * - Обработку ошибок аутентификации и авторизации
+ * - Сохранение и восстановление исходных запросов
+ */
 @Configuration
+@EnableWebFluxSecurity
 class SecurityConfig(
-    private val signInProperties: SignInProperties,
-    private val securityWhiteList: SecurityWhiteList
+    private val securityProperties: SecurityProperties,
+    private val authorizationRequestRepository: CustomOAuth2AuthorizationRequestRepository
 ) {
 
-    private val log = LoggerFactory.getLogger(SecurityConfig::class.java)
-
+    /**
+     * Создает основную цепочку фильтров безопасности.
+     *
+     * Настраивает:
+     * - Правила доступа к эндпоинтам
+     * - OAuth2 аутентификацию
+     * - Обработку ошибок
+     * - Кэширование запросов
+     */
     @Bean
-    fun securityFilterChain(
+    fun springSecurityFilterChain(
         http: ServerHttpSecurity,
-        clientRegistrationRepository: ReactiveClientRegistrationRepository,
-        globalCorsProperties: GlobalCorsProperties,
-        redisReactiveOAuth2AuthorizedClientService: RedisReactiveOAuth2AuthorizedClientService,
-        oAuth2ClientServerLogoutSuccessHandler: OAuth2ClientServerLogoutSuccessHandler,
-        redirectClientInitiatedServerLogoutHandler: RedirectClientInitiatedServerLogoutHandler,
-        redisReactiveOidcSessionRepository: RedisReactiveOidcSessionRepository
+        resourceLoader: ResourceLoader,
+        authorizedClientRepository: ServerOAuth2AuthorizedClientRepository,
+        authorizedClientService: RedisReactiveOAuth2AuthorizedClientService,
+        oidcSessionRegistry: RedisReactiveOidcSessionRegistry,
     ): SecurityWebFilterChain {
-        http
-            .authorizeExchange { exchanges: ServerHttpSecurity.AuthorizeExchangeSpec ->
-                exchanges.pathMatchers(*securityWhiteList.permitAllPatterns.toTypedArray()).permitAll()
-                exchanges.pathMatchers(HttpMethod.OPTIONS).permitAll()
-                exchanges.anyExchange().authenticated()
-            }
-            .oauth2Login { oAuth2LoginSpec: ServerHttpSecurity.OAuth2LoginSpec ->
-                val pkceResolver = DefaultServerOAuth2AuthorizationRequestResolver(clientRegistrationRepository)
-                pkceResolver.setAuthorizationRequestCustomizer { builder ->
-                    OAuth2AuthorizationRequestCustomizers.withPkce().accept(builder)
-                }
-
-                val spaServerOAuth2AuthorizationRequestResolver = SpaServerOAuth2AuthorizationRequestResolver(pkceResolver, signInProperties.redirectQueryParam)
-                oAuth2LoginSpec.authorizationRequestResolver(spaServerOAuth2AuthorizationRequestResolver)
-
-                oAuth2LoginSpec.authenticationSuccessHandler(StateRedirectUrlServerAuthenticationSuccessHandler())
-                oAuth2LoginSpec.authorizedClientService(redisReactiveOAuth2AuthorizedClientService)
-
-                val authenticationFailureHandler = HttpStatusJsonAuthenticationFailureHandler(HttpStatus.UNAUTHORIZED)
-                oAuth2LoginSpec.authenticationFailureHandler(authenticationFailureHandler)
-            }
-            .oidcLogout { oidcLogoutSpec ->
-                oidcLogoutSpec.backChannel { }
-                oidcLogoutSpec.oidcSessionRegistry(redisReactiveOidcSessionRepository)
-            }
-            .exceptionHandling { exceptionHandlingSpec: ServerHttpSecurity.ExceptionHandlingSpec ->
-                val accessDeniedHandler = HttpStatusJsonServerAccessDeniedHandler(HttpStatus.FORBIDDEN)
-                exceptionHandlingSpec.accessDeniedHandler(accessDeniedHandler)
-
-                val httpStatusJsonServerAuthenticationEntryPoint = HttpStatusJsonServerAuthenticationEntryPoint(HttpStatus.UNAUTHORIZED)
-                exceptionHandlingSpec.authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint)
-            }
-            .logout { logoutSpec: ServerHttpSecurity.LogoutSpec ->
-                val logoutHandler = DelegatingServerLogoutHandler(SecurityContextServerLogoutHandler(), WebSessionServerLogoutHandler())
-
-                logoutSpec.logoutHandler(logoutHandler)
-                logoutSpec.logoutSuccessHandler(DelegateServerSuccessLogoutHandler(redirectClientInitiatedServerLogoutHandler, oAuth2ClientServerLogoutSuccessHandler))
-            }
-            .oauth2ResourceServer { oAuth2ResourceServerSpec: ServerHttpSecurity.OAuth2ResourceServerSpec ->
-                val httpStatusJsonAuthenticationFailureHandler = HttpStatusJsonAuthenticationFailureHandler(HttpStatus.UNAUTHORIZED)
-                val httpStatusJsonServerAuthenticationEntryPoint = HttpStatusJsonServerAuthenticationEntryPoint(HttpStatus.UNAUTHORIZED)
-                val accessDeniedHandler = HttpStatusJsonServerAccessDeniedHandler(HttpStatus.FORBIDDEN)
-
-                oAuth2ResourceServerSpec
-                    .jwt(Customizer.withDefaults())
-                    .accessDeniedHandler(accessDeniedHandler)
-                    .authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint)
-                    .authenticationFailureHandler(httpStatusJsonAuthenticationFailureHandler)
-            }
-            .cors { corsConfigSource(globalCorsProperties) }
+        return http
             .csrf { it.disable() }
+            .cors { it.disable() }
+            .authorizeExchange {
+                it.pathMatchers("/actuator/**").permitAll()
+                    .pathMatchers("/api/v1/sessions").permitAll()
+                    .pathMatchers("/api/v1/oidc/sessions").authenticated()
+                    .anyExchange().authenticated()
+            }
+            .oauth2Login { oauth2Spec ->
+                oauth2Spec.authenticationSuccessHandler(authenticationSuccessHandler())
+                oauth2Spec.authorizedClientRepository(authorizedClientRepository)
+                oauth2Spec.authorizedClientService(authorizedClientService)
+                oauth2Spec.authorizationRequestRepository(authorizationRequestRepository)
+            }
+            .oauth2Client {
+                it.authorizedClientRepository(authorizedClientRepository)
+            }
+            .oauth2ResourceServer { oauth2 ->
+                oauth2
+                    .jwt { jwt ->
+                        jwt.jwtDecoder(ReactiveJwtDecoders.fromIssuerLocation("http://localhost:8080"))
+                    }
+                    .bearerTokenConverter(ServerBearerTokenAuthenticationConverter())
+                    .authenticationEntryPoint { exchange, ex ->
+                        val response = exchange.response
+                        response.statusCode = HttpStatus.UNAUTHORIZED
+                        when (ex) {
+                            is OAuth2AuthenticationException -> {
+                                val error = ex.error
 
-        return http.build()
+                                Mono.error(
+                                    OAuth2AuthenticationException(
+                                        OAuth2Error(
+                                            error.errorCode,
+                                            "Invalid token: ${error.description}",
+                                            error.uri
+                                        )
+                                    )
+                                )
+                            }
+
+                            else -> Mono.error(ex)
+                        }
+                    }
+                    .accessDeniedHandler(accessDeniedHandler())
+            }
+            .exceptionHandling { exceptionHandlingSpec ->
+                exceptionHandlingSpec
+                    .authenticationEntryPoint(authenticationEntryPoint())
+                    .accessDeniedHandler(accessDeniedHandler())
+            }
+            .build()
     }
 
+    /**
+     * Создает обработчик для случаев отказа в доступе.
+     * Возвращает 403 Forbidden с соответствующим сообщением.
+     */
     @Bean
-    fun corsConfigSource(globalCorsProperties: GlobalCorsProperties): CorsConfigurationSource {
-        val corsConfig = CorsConfiguration()
-
-        val globalCorsConfiguration = globalCorsProperties.corsConfigurations["/**"]
-            ?: throw Exception("No global cors configuration found")
-
-        log.info("CORS CONFIG -> {}{}", System.lineSeparator(), ObjectMapper().writeValueAsString(globalCorsConfiguration))
-
-        corsConfig.allowedOrigins = globalCorsConfiguration.allowedOrigins
-        corsConfig.allowedMethods = globalCorsConfiguration.allowedMethods
-        corsConfig.allowedHeaders = globalCorsConfiguration.allowedHeaders
-        corsConfig.allowCredentials = globalCorsConfiguration.allowCredentials
-
-        val source = UrlBasedCorsConfigurationSource()
-        source.registerCorsConfiguration("/**", corsConfig)
-
-        return source
+    fun accessDeniedHandler(): ServerAccessDeniedHandler {
+        return HttpStatusServerAccessDeniedHandler(HttpStatus.FORBIDDEN)
     }
 
+    /**
+     * Создает точку входа аутентификации.
+     * Возвращает 401 Unauthorized для неаутентифицированных запросов.
+     */
     @Bean
-    @Primary
-    fun defaultWebSessionIdResolver(
-        serverProperties: ServerProperties,
-        gatewaySessionCookieProperties: GatewaySessionCookieProperties,
-        reactiveSessionRepository: ReactiveSessionRepository<out Session>,
-    ): WebSessionIdResolver {
-        val webSessionIdResolver = CookieWebSessionIdResolver()
-        webSessionIdResolver.cookieName = gatewaySessionCookieProperties.name
+    fun authenticationEntryPoint(): ServerAuthenticationEntryPoint {
+        return HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)
+    }
 
-        webSessionIdResolver.addCookieInitializer { cookieBuilder: ResponseCookie.ResponseCookieBuilder ->
-            cookieBuilder.httpOnly(gatewaySessionCookieProperties.httpOnly)
-            cookieBuilder.domain(gatewaySessionCookieProperties.domain)
-            cookieBuilder.path(gatewaySessionCookieProperties.path)
-            cookieBuilder.secure(gatewaySessionCookieProperties.secure)
-            cookieBuilder.sameSite(gatewaySessionCookieProperties.sameSite.attributeValue())
-            cookieBuilder.maxAge(gatewaySessionCookieProperties.maxAge)
+    /**
+     * Создает обработчик успешной аутентификации.
+     *
+     * После успешной аутентификации:
+     * - Проверяет наличие параметра redirect-location в сохраненном запросе
+     * - Проверяет, что хост редиректа находится в списке разрешенных
+     * - Перенаправляет пользователя на указанный URL
+     */
+    @Bean
+    fun authenticationSuccessHandler(
+        oidcAuthenticationSuccessHandler: ServerAuthenticationSuccessHandler
+    ): ServerAuthenticationSuccessHandler {
+        return ServerAuthenticationSuccessHandler { exchange, authentication ->
+            oidcAuthenticationSuccessHandler.onAuthenticationSuccess(exchange, authentication)
+                .then(OAuth2RedirectAuthenticationSuccessHandler(
+                    queryParamNameRedirectLocation = securityProperties.queryParamNameRedirectLocation,
+                    allowedHosts = securityProperties.allowedRedirectHosts
+                ).onAuthenticationSuccess(exchange, authentication))
         }
-
-        return webSessionIdResolver
     }
-
-    @Bean
-    @ConditionalOnMissingBean(value = [ErrorWebExceptionHandler::class])
-    fun customErrorWebExceptionHandler(): ErrorWebExceptionHandler {
-        return GlobalErrorWebExceptionHandler()
-    }
-
-}
+} 

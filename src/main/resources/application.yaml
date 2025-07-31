@@ -1,59 +1,88 @@
-server:
-  port: 9000
-
 spring:
   application:
     name: gateway
-    version: 1.0.0
-
-  reactor:
-    context-propagation: auto
-
-  banner:
-    charset: UTF-8
-    location: classpath:banner.txt
-
-  config:
-    import:
-      - classpath:imports/gateway.cors.yml
-      - classpath:imports/gateway.session.yml
-      - classpath:imports/gateway.datasource.yml
-      - classpath:imports/gateway.route.yml
-      - classpath:imports/gateway.security.yml
-      - classpath:imports/gateway.frontend.yml
   cloud:
     gateway:
-      httpserver:
-        wiretap: true
-      predicate:
-        remote-addr:
-          enabled: true
-      global-filter:
-        websocket-routing:
-          enabled: true
-      httpclient:
-        connect-timeout: 30000
-        wiretap: true
-
-  jpa:
-    hibernate:
-      ddl-auto: none
-    show-sql: true
-    properties:
-      hibernate:
-        show_sql: false
-        format_sql: false
-
-logging:
-  pattern:
-    console: '%d{dd.MM.yyyy HH:mm:ss.SSS} %highlight(%-5level) [%thread] [${spring.application.name:},%X{traceId:-},%X{spanId:-}] %magenta([%file:%line]) : %msg%n'
-  level:
-    root: trace
-#    by.sorface.gateway: error
-#    org.springframework.cloud.gateway.filter.headers.observation: off
-#    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: error
-#    org.springframework.web.reactive: warn
-#    by.sorface.gateway.config.by.sorface.gateway.config.route.RouteFilterConfiguration: info
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: 
+              - "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - HEAD
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+      default-filters:
+        - TokenRelay
+      routes:
+        - id: resource-server
+          uri: http://localhost:5043
+          predicates:
+            - Path=/api/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RemoveRequestHeader=Set-Cookie
+  security:
+    oauth2:
+      allowed-redirect-hosts:
+        - localhost
+        - localhost:3000
+        - localhost:9020
+        - localhost:9030
+      query-param-name-redirect-location: redirect-location
+      client:
+        provider:
+          passport:
+            issuer-uri: http://localhost:8080
+            user-name-attribute: sub
+        registration:
+          passport:
+            provider: passport
+            client-id: gateway
+            client-secret: gateway-secret
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://localhost:9000/login/oauth2/code/passport"
+            scope:
+              - openid
+              - profile
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080
+  session:
+    cookie:
+      name: gtw_sid
+      domain: localhost
+      path: /
+      http-only: true
+      secure: false
+      same-site: Lax
+      max-age: 7200
+    redis:
+      namespace: spring:session
+      flush-mode: immediate
+      repository-type: indexed
+    timeout: 2h
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+      username: ${REDIS_USERNAME:default}
+      password: ${REDIS_PASSWORD:testpassword}
+      connect-timeout: 5s
+      client-type: lettuce
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: -1ms
 
 management:
   tracing:
@@ -61,45 +90,27 @@ management:
     sampling:
       probability: 1.0
     propagation:
-      type: b3
-  endpoints:
-    web:
-      exposure:
-        include: '*'
-    enabled-by-default: true
-  observations:
-    annotations:
+      type: w3c
+    baggage:
       enabled: true
-
----
-
-# docker profile configuration
-
-spring:
-  config:
-    activate:
-      on-profile: development
-
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: '*'
-    enabled-by-default: true
-
----
-
-spring:
-  config:
-    activate:
-      on-profile: kube
-
-  cloud:
-    kubernetes:
-      loadbalancer:
-        mode: service
+      correlation:
         enabled: true
-      discovery:
-        enabled: true
-        cache-loading-timeout-seconds: 60
+      remote-fields:
+        - trace-id
+        - span-id
+    brave:
+      enabled: false
+    otel:
+      enabled: true
+      exporter:
+        otlp:
+          enabled: true
+  observations:
+    key-values:
+      application: ${spring.application.name}
+    enabled: true
+      
+server:
+  port: 9000
+
+

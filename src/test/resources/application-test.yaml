@@ -1,0 +1,42 @@
+spring:
+  security:
+    oauth2:
+      allowed-redirect-hosts:
+        - localhost
+        - localhost:3000
+      query-param-name-redirect-location: redirect-location
+      client:
+        provider:
+          passport:
+            issuer-uri: http://localhost:8080
+            user-name-attribute: sub
+        registration:
+          passport:
+            provider: passport
+            client-id: test-client
+            client-secret: test-secret
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - openid
+              - profile
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080
+
+  session:
+    store-type: none
+
+  data:
+    redis:
+      host: localhost
+      port: 6380
+
+server:
+  port: 0
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG 

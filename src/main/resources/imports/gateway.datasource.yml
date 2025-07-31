@@ -1,9 +1,0 @@
-spring.data.redis:
-  host: ${REDIS_HOST}
-  username: ${REDIS_USERNAME}
-  password: ${REDIS_PASSWORD}
-  port: ${REDIS_PORT}
-  database: 1
-  lettuce:
-    pool:
-      enabled: true
