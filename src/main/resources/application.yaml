@@ -3,6 +3,21 @@ spring:
     name: gateway
   cloud:
     gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: 
+              - "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - HEAD
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
       default-filters:
         - TokenRelay
       routes:
@@ -46,7 +61,7 @@ spring:
       domain: localhost
       path: /
       http-only: true
-      secure: true
+      secure: false
       same-site: Lax
       max-age: 7200
     redis:
@@ -57,7 +72,7 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      port: ${REDIS_PORT:6380}
       username: ${REDIS_USERNAME:default}
       password: ${REDIS_PASSWORD:testpassword}
       connect-timeout: 5s
@@ -80,6 +95,9 @@ management:
       enabled: true
       correlation:
         enabled: true
+      remote-fields:
+        - trace-id
+        - span-id
     brave:
       enabled: false
     otel:
@@ -88,18 +106,11 @@ management:
         otlp:
           enabled: true
   observations:
+    key-values:
+      application: ${spring.application.name}
     enabled: true
       
 server:
   port: 9000
-  
-logging:
-  pattern:
-    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
-  level:
-    root: INFO
-    org.springframework.cloud.gateway: TRACE
-    org.springframework.web.reactive: TRACE
-    by.sorface.gateway: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.session: DEBUG
+
+

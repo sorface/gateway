@@ -51,6 +51,7 @@ class OAuth2RedirectAuthenticationSuccessHandler(
         authentication: OAuth2AuthenticationToken
     ): Mono<Void> {
         logger.debug("Handling OAuth2 authentication success")
+        logger.debug("Processing authentication for user '{}' with client '{}'", authentication.name, authentication.authorizedClientRegistrationId)
         logger.debug("Exchange attributes: {}", exchange.attributes.keys)
 
         val attributes = exchange.attributes

@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component
 import java.time.Instant
 
 @Component
-class OidcSessionInformationRedisSerializer : RedisSerializer<OidcSessionInformation> {
+open class OidcSessionInformationRedisSerializer : RedisSerializer<OidcSessionInformation> {
     private val objectMapper = ObjectMapper().apply {
         registerModule(JavaTimeModule())
         registerKotlinModule()
@@ -59,7 +59,17 @@ class OidcSessionInformationRedisSerializer : RedisSerializer<OidcSessionInforma
     private fun serializeIdToken(idToken: OidcIdToken): Map<String, Any> {
         val claims = idToken.claims.mapValues { (key, value) ->
             when (key) {
-                "exp", "iat" -> (value as Number).toLong().toString() + "L"
+                "exp", "iat" -> {
+                    if (value is Long) {
+                        return@mapValues value
+                    }
+
+                    if (value is Instant) {
+                        return@mapValues (value.epochSecond.toString() + "L")
+                    }
+
+                    return@mapValues "0L"
+                }
                 else -> value
             }
         }

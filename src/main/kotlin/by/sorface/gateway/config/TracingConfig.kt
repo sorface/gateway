@@ -1,16 +1,15 @@
 package by.sorface.gateway.config
 
 import io.micrometer.context.ContextRegistry
-import io.micrometer.observation.ObservationRegistry
 import io.micrometer.tracing.Tracer
 import io.micrometer.tracing.handler.DefaultTracingObservationHandler
 import io.micrometer.tracing.handler.PropagatingReceiverTracingObservationHandler
 import io.micrometer.tracing.handler.PropagatingSenderTracingObservationHandler
 import io.micrometer.tracing.propagation.Propagator
+import jakarta.annotation.PostConstruct
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import reactor.core.publisher.Hooks
-import jakarta.annotation.PostConstruct
 
 @Configuration
 class TracingConfig {
@@ -18,6 +17,15 @@ class TracingConfig {
     @PostConstruct
     fun init() {
         Hooks.enableAutomaticContextPropagation()
+
+        // Регистрируем обработчик для MDC
+        ContextRegistry.getInstance()
+            .registerThreadLocalAccessor(
+                "MDC",
+                { org.slf4j.MDC.getCopyOfContextMap() ?: emptyMap() },
+                { context -> org.slf4j.MDC.setContextMap(context) },
+                { org.slf4j.MDC.clear() }
+            )
     }
 
     @Bean

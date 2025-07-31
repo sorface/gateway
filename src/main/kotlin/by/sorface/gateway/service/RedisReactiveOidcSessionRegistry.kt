@@ -17,8 +17,8 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Duration
 
-const val REGISTRATION_ID_KEY_NAME = "registrationId"
-const val PRINCIPAL_NAME_KEY_NAME = "principalName"
+const val REGISTRATION_ID_KEY_NAME = "passport"
+const val PRINCIPAL_NAME_KEY_NAME = "sub"
 
 @Service
 class RedisReactiveOidcSessionRegistry(
@@ -26,24 +26,25 @@ class RedisReactiveOidcSessionRegistry(
     oidcSessionInformationRedisSerializer: OidcSessionInformationRedisSerializer
 ) : ReactiveOidcSessionRegistry {
 
-    private val logger = LoggerFactory.getLogger(RedisReactiveOidcSessionRegistry::class.java)
-
-    private val redisTemplate: ReactiveRedisTemplate<String, OidcSessionInformation> = ReactiveRedisTemplate(
-        connectionFactory,
-        RedisSerializationContext
-            .newSerializationContext<String, OidcSessionInformation>()
-            .key(StringRedisSerializer())
-            .value(oidcSessionInformationRedisSerializer)
-            .hashKey(StringRedisSerializer())
-            .hashValue(oidcSessionInformationRedisSerializer)
-            .build()
-    )
-
     companion object {
         private const val KEY_PREFIX = "oidc:session:"
         private const val PRINCIPAL_KEY_PREFIX = "oidc:principal:"
-        private val DEFAULT_DURATION = Duration.ofHours(24)
+        private val DEFAULT_DURATION = Duration.ofHours(120)
     }
+
+    private val logger = LoggerFactory.getLogger(RedisReactiveOidcSessionRegistry::class.java)
+
+    private val redisTemplate: ReactiveRedisTemplate<String, OidcSessionInformation> =
+        ReactiveRedisTemplate(
+            connectionFactory,
+            RedisSerializationContext
+                .newSerializationContext<String, OidcSessionInformation>()
+                .key(StringRedisSerializer())
+                .value(oidcSessionInformationRedisSerializer)
+                .hashKey(StringRedisSerializer())
+                .hashValue(oidcSessionInformationRedisSerializer)
+                .build()
+        )
 
     override fun saveSessionInformation(info: OidcSessionInformation?): Mono<Void> {
         if (info == null) {
@@ -51,15 +52,14 @@ class RedisReactiveOidcSessionRegistry(
             return Mono.empty()
         }
 
-        logger.debug("Saving session information - Session ID: {}, Principal: {}", 
-            info.sessionId, info.principal.name)
+        logger.debug("Saving session information - Session ID: {}, Principal: {}", info.sessionId, info.principal.name)
 
         val sessionKey = getSessionKey(info.sessionId)
-        val principalKey = getPrincipalKey(
-            getPrincipalFromAuthorities(info), 
-            getRegistrationFromAuthorities(info), 
-            info.sessionId
-        )
+
+        val principalName = this.getPrincipalFromAuthorities(info)
+        val registrationId = REGISTRATION_ID_KEY_NAME
+
+        val principalKey = this.getPrincipalKey(principalName, registrationId, info.sessionId)
 
         // Используем время жизни из ID токена или дефолтное значение
         val duration = info.principal.let { principal ->
@@ -72,12 +72,12 @@ class RedisReactiveOidcSessionRegistry(
                         DEFAULT_DURATION
                     }
                 }
+
                 else -> DEFAULT_DURATION
             }
         }
 
-        logger.debug("Setting session with duration: {} for keys - Session: {}, Principal: {}", 
-            duration, sessionKey, principalKey)
+        logger.debug("Setting session with duration: {} for keys - Session: {}, Principal: {}", duration, sessionKey, principalKey)
 
         return Mono.zip(
             redisTemplate.opsForValue().set(sessionKey, info, duration)
@@ -89,41 +89,38 @@ class RedisReactiveOidcSessionRegistry(
         ).then()
     }
 
-    fun saveSessionInformation(
-        registrationId: String,
-        principalName: String,
-        sessionId: String,
-        idToken: OidcIdToken
-    ): Mono<Void> {
-        logger.debug("Creating new session information - Registration ID: {}, Principal: {}, Session ID: {}", 
-            registrationId, principalName, sessionId)
+    fun saveSessionInformation(registrationId: String, principalName: String, sessionId: String, idToken: OidcIdToken): Mono<Void> {
+        logger.debug("Creating new session information - Registration ID: {}, Principal: {}, Session ID: {}", registrationId, principalName, sessionId)
 
         val user = DefaultOidcUser(emptyList(), idToken)
+
         val authorities = mapOf(
             REGISTRATION_ID_KEY_NAME to registrationId,
             PRINCIPAL_NAME_KEY_NAME to principalName
         )
+
         val sessionInformation = OidcSessionInformation(sessionId, authorities, user)
+
         return saveSessionInformation(sessionInformation)
     }
 
     override fun removeSessionInformation(clientSessionId: String?): Mono<OidcSessionInformation> {
         if (clientSessionId == null) {
             logger.debug("Attempt to remove null session ID")
+
             return Mono.empty()
         }
 
         logger.debug("Removing session information for session ID: {}", clientSessionId)
-        
+
         val sessionKey = getSessionKey(clientSessionId)
         return redisTemplate.opsForValue().get(sessionKey)
             .filter { it != null }
             .flatMap { session ->
-                val registrationId = getRegistrationFromAuthorities(session)
+                val registrationId = REGISTRATION_ID_KEY_NAME
                 val principalName = getPrincipalFromAuthorities(session)
-                
-                logger.debug("Found session to remove - Registration ID: {}, Principal: {}", 
-                    registrationId, principalName)
+
+                logger.debug("Found session to remove - Registration ID: {}, Principal: {}", registrationId, principalName)
 
                 removeSessionInformation(registrationId, principalName, session.sessionId)
                     .doOnSuccess { logger.debug("Successfully removed session information") }
@@ -138,51 +135,45 @@ class RedisReactiveOidcSessionRegistry(
             return Flux.empty()
         }
 
-        logger.debug("Removing sessions for logout token - Issuer: {}, Subject: {}", 
-            logoutToken.issuer, logoutToken.subject)
-        
+        logger.debug("Removing sessions for logout token - Issuer: {}, Subject: {}", logoutToken.issuer, logoutToken.subject)
+
         return findByPrincipalName(logoutToken.issuer.toString(), logoutToken.subject)
             .flatMap { session ->
-                removeSessionInformation(
-                    getRegistrationFromAuthorities(session),
-                    getPrincipalFromAuthorities(session),
-                    session.sessionId
-                )
-                .thenReturn(session)
+                val registrationId = REGISTRATION_ID_KEY_NAME
+                val principalName = this.getPrincipalFromAuthorities(session)
+
+                this.removeSessionInformation(registrationId, principalName, session.sessionId).thenReturn(session)
             }
     }
 
     fun findByPrincipalName(registrationId: String, principalName: String): Flux<OidcSessionInformation> {
-        logger.debug("Finding sessions for principal - Registration ID: {}, Principal: {}", 
-            registrationId, principalName)
+        logger.debug(
+            "Finding sessions for principal - Registration ID: {}, Principal: {}",
+            registrationId, principalName
+        )
 
         val pattern = "$PRINCIPAL_KEY_PREFIX$principalName:$registrationId:*"
         return redisTemplate.scan(ScanOptions.scanOptions().match(pattern).build())
             .doOnNext { key -> logger.debug("Found key matching pattern: {}", key) }
-            .flatMap { key -> 
+            .flatMap { key ->
                 redisTemplate.opsForValue().get(key)
                     .doOnNext { logger.debug("Retrieved session information for key: {}", key) }
             }
             .filter { it != null }
     }
 
-    private fun removeSessionInformation(
-        registrationId: String,
-        principalName: String,
-        sessionId: String
-    ): Mono<Void> {
-        logger.debug("Removing session information - Registration ID: {}, Principal: {}, Session ID: {}", 
-            registrationId, principalName, sessionId)
+    private fun removeSessionInformation(registrationId: String, principalName: String, sessionId: String): Mono<Void> {
+        logger.debug("Removing session information - Registration ID: {}, Principal: {}, Session ID: {}", registrationId, principalName, sessionId)
 
         val sessionKey = getSessionKey(sessionId)
         val principalKey = getPrincipalKey(principalName, registrationId, sessionId)
 
-        return Mono.zip(
-            redisTemplate.opsForValue().delete(sessionKey)
-                .doOnSuccess { logger.debug("Deleted session key: {}", sessionKey) },
-            redisTemplate.opsForValue().delete(principalKey)
-                .doOnSuccess { logger.debug("Deleted principal key: {}", principalKey) }
-        ).then()
+        return Mono
+            .zip(
+                redisTemplate.opsForValue().delete(sessionKey).doOnSuccess { logger.debug("Deleted session key: {}", sessionKey) },
+                redisTemplate.opsForValue().delete(principalKey).doOnSuccess { logger.debug("Deleted principal key: {}", principalKey) }
+            )
+            .then()
     }
 
     private fun getSessionKey(sessionId: String) = "$KEY_PREFIX$sessionId"
@@ -194,5 +185,5 @@ class RedisReactiveOidcSessionRegistry(
         session.authorities[REGISTRATION_ID_KEY_NAME] ?: throw IllegalStateException("No registration ID in session")
 
     private fun getPrincipalFromAuthorities(session: OidcSessionInformation): String =
-        session.authorities[PRINCIPAL_NAME_KEY_NAME] ?: throw IllegalStateException("No principal name in session")
+        session.principal.attributes[PRINCIPAL_NAME_KEY_NAME] as String? ?: throw IllegalStateException("No principal name in session")
 } 

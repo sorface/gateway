@@ -5,6 +5,7 @@ import by.sorface.gateway.config.properties.SecurityProperties
 import by.sorface.gateway.config.repository.CustomOAuth2AuthorizationRequestRepository
 import by.sorface.gateway.config.resolver.CustomServerOAuth2AuthorizationRequestResolver
 import by.sorface.gateway.service.RedisReactiveOAuth2AuthorizedClientService
+import by.sorface.gateway.service.RedisReactiveOidcSessionRegistry
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.io.ResourceLoader
@@ -57,10 +58,12 @@ class SecurityConfig(
         http: ServerHttpSecurity,
         resourceLoader: ResourceLoader,
         authorizedClientRepository: ServerOAuth2AuthorizedClientRepository,
-        authorizedClientService: RedisReactiveOAuth2AuthorizedClientService
+        authorizedClientService: RedisReactiveOAuth2AuthorizedClientService,
+        oidcSessionRegistry: RedisReactiveOidcSessionRegistry,
     ): SecurityWebFilterChain {
         return http
             .csrf { it.disable() }
+            .cors { it.disable() }
             .authorizeExchange {
                 it.pathMatchers("/actuator/**").permitAll()
                     .pathMatchers("/api/v1/sessions").permitAll()
@@ -140,10 +143,15 @@ class SecurityConfig(
      * - Перенаправляет пользователя на указанный URL
      */
     @Bean
-    fun authenticationSuccessHandler(): ServerAuthenticationSuccessHandler {
-        return OAuth2RedirectAuthenticationSuccessHandler(
-            queryParamNameRedirectLocation = securityProperties.queryParamNameRedirectLocation,
-            allowedHosts = securityProperties.allowedRedirectHosts
-        )
+    fun authenticationSuccessHandler(
+        oidcAuthenticationSuccessHandler: ServerAuthenticationSuccessHandler
+    ): ServerAuthenticationSuccessHandler {
+        return ServerAuthenticationSuccessHandler { exchange, authentication ->
+            oidcAuthenticationSuccessHandler.onAuthenticationSuccess(exchange, authentication)
+                .then(OAuth2RedirectAuthenticationSuccessHandler(
+                    queryParamNameRedirectLocation = securityProperties.queryParamNameRedirectLocation,
+                    allowedHosts = securityProperties.allowedRedirectHosts
+                ).onAuthenticationSuccess(exchange, authentication))
+        }
     }
 } 
