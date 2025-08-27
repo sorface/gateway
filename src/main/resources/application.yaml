@@ -45,15 +45,18 @@ spring:
         format_sql: false
 
 logging:
-  pattern:
-    console: '%d{dd.MM.yyyy HH:mm:ss.SSS} %highlight(%-5level) [%thread] [${spring.application.name:},%X{traceId:-},%X{spanId:-}] %magenta([%file:%line]) : %msg%n'
   level:
-    root: trace
-#    by.sorface.gateway: error
-#    org.springframework.cloud.gateway.filter.headers.observation: off
-#    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: error
-#    org.springframework.web.reactive: warn
-#    by.sorface.gateway.config.by.sorface.gateway.config.route.RouteFilterConfiguration: info
+    root: warn
+#    org.springframework.web.reactive.function.client.ExchangeFunctions: debug
+#    org.springframework.security.oauth2.client: debug
+#    org.springframework.security.oauth2.client.endpoint: debug
+#    org.springframework.security.oauth2.client.web.reactive.function.client.ServerOAuth2AuthorizedClientExchangeFilterFunction: debug
+#    org.springframework.security.oauth2.jwt: debug
+#    reactor.netty.http.client: debug
+    by.sorface.gateway:
+      filter.LoggingGatewayFilterFactory: debug
+      service.RedisReactiveOidcSessionRepository: info
+      config.security.handlers.TokenRefreshLogoutHandler: debug
 
 management:
   tracing:

@@ -1,11 +1,14 @@
 package by.sorface.gateway.config.security.repository
 
+import by.sorface.gateway.service.RedisReactiveOAuth2AuthorizedClientService
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.security.oauth2.client.oidc.authentication.logout.OidcLogoutToken
 import org.springframework.security.oauth2.client.oidc.server.session.ReactiveOidcSessionRegistry
 import org.springframework.security.oauth2.client.oidc.session.OidcSessionInformation
+import org.springframework.session.ReactiveSessionRepository
+import org.springframework.session.Session
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -13,7 +16,9 @@ import reactor.core.publisher.Mono
 @Component
 class RedisReactiveOidcSessionRepository(
     @Qualifier("redisOidcSessionStoreClient") private val redisOidcSessionStoreClient: ReactiveRedisTemplate<String, OidcSessionInformation>,
-    @Qualifier("redisOidcSessionIndexStoreClient") private val redisOidcSessionIndexStoreClient: ReactiveRedisTemplate<String, String>
+    @Qualifier("redisOidcSessionIndexStoreClient") private val redisOidcSessionIndexStoreClient: ReactiveRedisTemplate<String, String>,
+    private val authorizedClientService: RedisReactiveOAuth2AuthorizedClientService,
+    private val reactiveSessionRepository: ReactiveSessionRepository<out Session>
 ) : ReactiveOidcSessionRegistry {
 
     private val logger = LoggerFactory.getLogger(ReactiveOidcSessionRegistry::class.java)
@@ -53,7 +58,16 @@ class RedisReactiveOidcSessionRepository(
 
                 logger.info("remove session information by session id [$oidcSessionKey]")
 
-                redisOidcSessionStoreClient.opsForSet().delete(oidcSessionKey).then(Mono.just(session))
+                val principalName = session.principal.subject
+
+                Mono.`when`(
+                    // remove OIDC session entry
+                    redisOidcSessionStoreClient.opsForSet().delete(oidcSessionKey),
+                    // invalidate web session in Spring Session (Redis)
+                    reactiveSessionRepository.deleteById(session.sessionId),
+                    // remove all authorized clients for this principal
+                    authorizedClientService.removeAllAuthorizedClients(principalName)
+                ).then(Mono.just(session))
             }
             .next()
     }
@@ -68,7 +82,13 @@ class RedisReactiveOidcSessionRepository(
             .flatMap { session ->
                 logger.info("remove session information by logout token with session id ${session.sessionId}")
 
-                removeOidcSessionInformation(session.sessionId).then(Mono.just(session))
+                val principalName = session.principal.subject
+
+                Mono.`when`(
+                    removeOidcSessionInformation(session.sessionId),
+                    reactiveSessionRepository.deleteById(session.sessionId),
+                    authorizedClientService.removeAllAuthorizedClients(principalName)
+                ).then(Mono.just(session))
             }
     }
 

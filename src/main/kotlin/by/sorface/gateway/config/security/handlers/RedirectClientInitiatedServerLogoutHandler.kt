@@ -1,7 +1,9 @@
 package by.sorface.gateway.config.security.handlers
 
 import by.sorface.gateway.properties.SignOutProperties
+import by.sorface.gateway.service.TokenRefreshService
 import org.springframework.security.core.Authentication
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
 import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcClientInitiatedServerLogoutSuccessHandler
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository
 import org.springframework.security.web.server.WebFilterExchange
@@ -12,25 +14,29 @@ import java.net.URI
 @Component
 class RedirectClientInitiatedServerLogoutHandler(
     private val reactiveClientRegistrationRepository: ReactiveClientRegistrationRepository,
-    private val signOutProperties: SignOutProperties
+    private val signOutProperties: SignOutProperties,
+    private val tokenRefreshService: TokenRefreshService
 ) : OidcClientInitiatedServerLogoutSuccessHandler(reactiveClientRegistrationRepository) {
 
     override fun onLogoutSuccess(exchange: WebFilterExchange, authentication: Authentication): Mono<Void> {
-        return Mono.just(exchange.exchange)
-            .flatMap { webRequest ->
-                val queryParams = webRequest.request.queryParams
+        val request = exchange.exchange
+        val queryParams = request.request.queryParams
 
-                if (queryParams.containsKey(signOutProperties.redirectQueryParam)) {
-                    val redirectLocation = queryParams.getFirst(signOutProperties.redirectQueryParam)
-                    if (redirectLocation != null) {
-                        super.setPostLogoutRedirectUri(redirectLocation)
-                        super.setLogoutSuccessUrl(URI(redirectLocation))
-                    }
-                }
-
-                super.onLogoutSuccess(exchange, authentication)
+        queryParams[signOutProperties.redirectQueryParam]?.firstOrNull()
+            ?.let { redirectLocation ->
+                super.setPostLogoutRedirectUri(redirectLocation)
+                super.setLogoutSuccessUrl(URI(redirectLocation))
             }
-            .then()
-    }
 
+        return if (authentication is OAuth2AuthenticationToken) {
+            tokenRefreshService
+                .refreshTokenAndUpdateAuthenticationIfNeeded(authentication, request)
+                .map<Authentication> { oauth2AuthenticationToken -> oauth2AuthenticationToken ?: authentication }
+                .defaultIfEmpty(authentication)
+                .onErrorReturn(authentication)
+                .flatMap { oauth2AuthenticationToken -> super.onLogoutSuccess(exchange, oauth2AuthenticationToken) }
+        } else {
+            super.onLogoutSuccess(exchange, authentication)
+        }
+    }
 }

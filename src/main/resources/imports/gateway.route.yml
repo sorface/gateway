@@ -3,53 +3,51 @@ spring:
     gateway:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
+        - Logging=
+        - TokenExpired=
+        - TokenRelay=
+        - ErrorHandling=
       routes:
         # interview backend
-
         - id: interview-api
-          uri: ${INTERVIEW_SERVICE_URL}
+          uri: ${INTERVIEW_SERVICE_URL:http://localhost:5043}
           predicates:
             - Path=/interview/**
           filters:
             - RewritePath=/interview/(?<segment>.*),/api/$\{segment}
-            - TokenRelay=
 
         # passport backend
 
         - id: passport-account-api
-          uri: ${PASSPORT_SERVICE_URL}
+          uri: ${PASSPORT_SERVICE_URL:http://localhost:8080}
           predicates:
             - Path=/passport/**
           filters:
             - RewritePath=/passport/(?<segment>.*),/$\{segment}
-            - TokenRelay=
 
         # document backend
 
         - id: document-api
-          uri: ${DOCUMENT_SERVICE_URL}
+          uri: ${DOCUMENT_SERVICE_URL:http://localhost:3432}
           predicates:
             - Path=/document/**
           filters:
             - RewritePath=/document/(?<segment>.*),/internal/document/s3/$\{segment}
-            - TokenRelay=
 
         # document backend
 
         - id: copilot-api
-          uri: ${COPILOT_SERVICE_URL}
+          uri: ${COPILOT_SERVICE_URL:http://localhost:1343}
           predicates:
             - Path=/copilot/**
           filters:
             - RewritePath=/copilot/(?<segment>.*),/$\{segment}
-            - TokenRelay=
 
          # sockets
 
         - id: socket-interview-room
-          uri: ${INTERVIEW_SERVICE_URL}
+          uri: ${INTERVIEW_SERVICE_URL:http://localhost:7663}
           predicates:
             - Path=/socket/interview/room/**
           filters:
             - RewritePath=/socket/interview/room/(?<segment>.*),/$\{segment}
-            - TokenRelay=

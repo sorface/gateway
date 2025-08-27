@@ -7,13 +7,10 @@ import by.sorface.gateway.config.security.resolvers.SpaServerOAuth2Authorization
 import by.sorface.gateway.properties.GatewaySessionCookieProperties
 import by.sorface.gateway.properties.SecurityWhiteList
 import by.sorface.gateway.properties.SignInProperties
-import by.sorface.gateway.properties.SignOutProperties
 import by.sorface.gateway.service.RedisReactiveOAuth2AuthorizedClientService
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
-import org.springframework.boot.autoconfigure.web.ServerProperties
 import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler
 import org.springframework.cloud.gateway.config.GlobalCorsProperties
 import org.springframework.context.annotation.Bean
@@ -22,30 +19,27 @@ import org.springframework.context.annotation.Primary
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseCookie
-import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
-import org.springframework.security.core.Authentication
-import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcClientInitiatedServerLogoutSuccessHandler
+import org.springframework.security.oauth2.client.AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientProvider
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientProviderBuilder
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers
 import org.springframework.security.oauth2.client.web.server.DefaultServerOAuth2AuthorizationRequestResolver
 import org.springframework.security.web.server.SecurityWebFilterChain
-import org.springframework.security.web.server.WebFilterExchange
 import org.springframework.security.web.server.authentication.logout.DelegatingServerLogoutHandler
 import org.springframework.security.web.server.authentication.logout.SecurityContextServerLogoutHandler
-import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler
 import org.springframework.security.web.server.authentication.logout.WebSessionServerLogoutHandler
-import org.springframework.session.ReactiveSessionRepository
-import org.springframework.session.Session
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.reactive.CorsConfigurationSource
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource
 import org.springframework.web.reactive.config.EnableWebFlux
+import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.server.session.CookieWebSessionIdResolver
 import org.springframework.web.server.session.WebSessionIdResolver
-import java.net.URI
 
 @EnableWebFlux
 @EnableWebFluxSecurity
@@ -101,10 +95,19 @@ class SecurityConfig(
                 exceptionHandlingSpec.authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint)
             }
             .logout { logoutSpec: ServerHttpSecurity.LogoutSpec ->
-                val logoutHandler = DelegatingServerLogoutHandler(SecurityContextServerLogoutHandler(), WebSessionServerLogoutHandler())
+                val logoutHandler = DelegatingServerLogoutHandler(
+                    SecurityContextServerLogoutHandler(),
+                    WebSessionServerLogoutHandler()
+                )
 
+                val delegateServerSuccessLogoutHandler = DelegateServerSuccessLogoutHandler(
+                    redirectClientInitiatedServerLogoutHandler,
+                    oAuth2ClientServerLogoutSuccessHandler
+                )
+
+                logoutSpec.logoutUrl("/logout")
                 logoutSpec.logoutHandler(logoutHandler)
-                logoutSpec.logoutSuccessHandler(DelegateServerSuccessLogoutHandler(redirectClientInitiatedServerLogoutHandler, oAuth2ClientServerLogoutSuccessHandler))
+                logoutSpec.logoutSuccessHandler(delegateServerSuccessLogoutHandler)
             }
             .oauth2ResourceServer { oAuth2ResourceServerSpec: ServerHttpSecurity.OAuth2ResourceServerSpec ->
                 val httpStatusJsonAuthenticationFailureHandler = HttpStatusJsonAuthenticationFailureHandler(HttpStatus.UNAUTHORIZED)
@@ -112,7 +115,7 @@ class SecurityConfig(
                 val accessDeniedHandler = HttpStatusJsonServerAccessDeniedHandler(HttpStatus.FORBIDDEN)
 
                 oAuth2ResourceServerSpec
-                    .jwt(Customizer.withDefaults())
+                    .jwt {}
                     .accessDeniedHandler(accessDeniedHandler)
                     .authenticationEntryPoint(httpStatusJsonServerAuthenticationEntryPoint)
                     .authenticationFailureHandler(httpStatusJsonAuthenticationFailureHandler)
@@ -146,9 +149,7 @@ class SecurityConfig(
     @Bean
     @Primary
     fun defaultWebSessionIdResolver(
-        serverProperties: ServerProperties,
-        gatewaySessionCookieProperties: GatewaySessionCookieProperties,
-        reactiveSessionRepository: ReactiveSessionRepository<out Session>,
+        gatewaySessionCookieProperties: GatewaySessionCookieProperties
     ): WebSessionIdResolver {
         val webSessionIdResolver = CookieWebSessionIdResolver()
         webSessionIdResolver.cookieName = gatewaySessionCookieProperties.name
@@ -163,6 +164,30 @@ class SecurityConfig(
         }
 
         return webSessionIdResolver
+    }
+
+    @Bean
+    fun reactiveOAuth2AuthorizedClientManager(
+        clientRegistrationRepository: ReactiveClientRegistrationRepository,
+        authorizedClientService: RedisReactiveOAuth2AuthorizedClientService
+    ): ReactiveOAuth2AuthorizedClientManager {
+        val authorizedClientProvider: ReactiveOAuth2AuthorizedClientProvider = ReactiveOAuth2AuthorizedClientProviderBuilder.builder()
+            .authorizationCode()
+            .refreshToken()
+            .build()
+
+        val authorizedClientManager = AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager(
+            clientRegistrationRepository,
+            authorizedClientService
+        )
+        authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider)
+
+        return authorizedClientManager
+    }
+
+    @Bean
+    fun webClient(): WebClient.Builder {
+        return WebClient.builder()
     }
 
     @Bean

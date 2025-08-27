@@ -5,4 +5,4 @@
 .-'    |' '-' '|  |   |  .-'\ '-'  \ `--.\   --. '  '--'  |\ '-'  |  |  |  \   --.|   .'.   |\ '-'  |  \   '
 `-----'  `---' `--'   `--'   `--`--'`---' `----'  `------'  `--`--'  `--'   `----''--'   '--' `--`--'.-'  /
                                                                                                      `---'
-@ sorface [build version ${application.metadata.version}]
+@ sorface [build version ${spring.application.version}]

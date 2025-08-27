@@ -3,6 +3,9 @@ package by.sorface.gateway.service
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataRetrievalFailureException
 import org.springframework.data.redis.core.ReactiveRedisTemplate
+import org.springframework.data.redis.core.ScanOptions
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientService
@@ -72,6 +75,25 @@ class RedisReactiveOAuth2AuthorizedClientService(
             .delete(buildKey(clientRegistrationId, principalName))
             .doOnNext { result ->
                 logger.info("remove authorized client with client registration id [${clientRegistrationId}] and principal [$principalName] was been with result $result")
+            }
+            .then()
+    }
+
+    fun removeAllAuthorizedClients(principalName: String): Mono<Void> {
+        val pattern = "*_${principalName}"
+
+        logger.info("remove all authorized clients for principal [$principalName] with pattern [$pattern]")
+
+        val options = ScanOptions.scanOptions().match(pattern).build()
+
+        return reactiveAuthorizedClientRedisTemplate
+            .execute { connection -> connection.keyCommands().scan(options) }
+            .flatMap { byteBuffer: ByteBuffer ->
+                val key = StandardCharsets.UTF_8.decode(byteBuffer).toString()
+                reactiveAuthorizedClientRedisTemplate.delete(key)
+                    .doOnNext { result ->
+                        logger.info("remove authorized client by key [$key] result [$result]")
+                    }
             }
             .then()
     }

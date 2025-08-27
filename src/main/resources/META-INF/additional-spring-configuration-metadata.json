@@ -1,0 +1,31 @@
+{
+  "properties": [
+    {
+      "name": "gateway.auth.default-redirect-url",
+      "type": "java.lang.String",
+      "description": "URL по умолчанию для перенаправления после успешной аутентификации, если не указан пользовательский URL.",
+      "defaultValue": "/"
+    },
+    {
+      "name": "gateway.auth.redirect-location-param",
+      "type": "java.lang.String",
+      "description": "Имя параметра запроса, используемого для передачи пользовательского URL перенаправления после аутентификации.",
+      "defaultValue": "redirect-location"
+    }
+  ],
+  "hints": [
+    {
+      "name": "gateway.auth.default-redirect-url",
+      "values": [
+        {
+          "value": "/",
+          "description": "Корневой путь приложения"
+        },
+        {
+          "value": "http://localhost:3000",
+          "description": "Локальный фронтенд на порту 3000"
+        }
+      ]
+    }
+  ]
+}
