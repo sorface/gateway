@@ -4,7 +4,7 @@ server:
 spring:
   application:
     name: gateway
-    version: 1.0.0
+    version: ${APPLICATION_METADATA_VERSION:dev-1.0.0}
 
   reactor:
     context-propagation: auto
