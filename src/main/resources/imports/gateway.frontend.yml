@@ -15,6 +15,7 @@ gateway.frontend:
       - '/passport/logout/**'
       - '/passport/api/csrf'
       - '/passport/api/accounts/authenticated'
+      - '/copilot/**'
 
 ---
 spring:
