@@ -10,6 +10,7 @@ spring:
         corsConfigurations:
           '[/**]':
             allowedOrigins:
+              - 'https://code.sorface.com'
               - 'https://id.sorface.ru'
               - 'https://api.gateway.sorface.ru'
               - 'https://passport.sorface.ru'
